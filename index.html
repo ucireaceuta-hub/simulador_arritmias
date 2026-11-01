@@ -1,0 +1,1958 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arritmias cardíacas · Monitor de ritmos y guía para enfermería</title>
+<style>
+  :root{
+    --bg:#050c14;
+    --panel:#0c1824;
+    --panel2:#102330;
+    --line:rgba(122,197,218,.16);
+    --line2:rgba(122,197,218,.30);
+    --text:#e9f4fa;
+    --muted:#8ea9bb;
+    --accent:#2fe0c4;
+    --accent2:#4bb8ff;
+    --trace:#5cf2a8;
+    --warn:#ffb648;
+    --danger:#ff5f6d;
+    --ok:#5cd97a;
+    --radius:16px;
+    --font:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(1100px 600px at 8% -8%, rgba(47,224,196,.10), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, rgba(75,184,255,.10), transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--font);
+    font-size:15px;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  h1,h2,h3,h4{margin:0;line-height:1.25;letter-spacing:-.01em}
+  p{margin:0 0 .6em}
+  a{color:var(--accent2)}
+  button{font-family:inherit}
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    position:sticky;top:0;z-index:40;
+    display:flex;align-items:center;gap:22px;flex-wrap:wrap;
+    padding:12px 22px;
+    background:rgba(5,12,20,.86);
+    backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--line);
+  }
+  .brand{display:flex;align-items:center;gap:12px;min-width:250px}
+  .brand .beat{
+    width:42px;height:42px;border-radius:12px;flex:0 0 auto;
+    background:linear-gradient(145deg,rgba(47,224,196,.20),rgba(75,184,255,.14));
+    border:1px solid rgba(47,224,196,.35);
+    display:grid;place-items:center;
+  }
+  .brand h1{font-size:16.5px;font-weight:650}
+  .brand p{margin:0;font-size:11.5px;color:var(--muted);letter-spacing:.02em}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+  .tab{
+    border:1px solid transparent;background:transparent;color:var(--muted);
+    padding:8px 15px;border-radius:999px;font-size:13.5px;font-weight:560;cursor:pointer;
+    transition:.18s;
+  }
+  .tab:hover{color:var(--text);background:rgba(122,197,218,.08)}
+  .tab.active{
+    color:#04201c;background:linear-gradient(160deg,#5ef0d0,#2fd7c0);
+    box-shadow:0 6px 18px -8px rgba(47,224,196,.9);
+  }
+
+  /* ---------- layout ---------- */
+  main{max-width:1660px;margin:0 auto;padding:18px 22px 60px}
+  .tabpanel{display:none;animation:fade .25s ease}
+  .tabpanel.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .shell{display:grid;grid-template-columns:276px minmax(0,1fr);gap:18px;align-items:start}
+
+  /* ---------- selector ---------- */
+  .selector{
+    position:sticky;top:76px;
+    background:linear-gradient(180deg,rgba(16,35,48,.92),rgba(10,22,32,.92));
+    border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px 12px 10px;
+    max-height:calc(100vh - 96px);overflow:auto;
+  }
+  .selector h2{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);padding:0 6px 8px}
+  .sel-group{margin-bottom:12px}
+  .sel-group .g-title{
+    font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;
+    color:rgba(142,169,187,.85);padding:6px 8px 5px;display:flex;align-items:center;gap:7px;
+  }
+  .sel-group .g-title::after{content:"";flex:1;height:1px;background:var(--line)}
+  .r-btn{
+    width:100%;display:flex;align-items:center;gap:9px;
+    padding:5px 9px;margin-bottom:2px;border-radius:10px;
+    background:transparent;border:1px solid transparent;color:#cfe2ee;
+    cursor:pointer;text-align:left;transition:.15s;font-size:13px;
+  }
+  .r-btn:hover{background:rgba(122,197,218,.08);border-color:var(--line)}
+  .r-btn.active{
+    background:linear-gradient(100deg,rgba(47,224,196,.18),rgba(47,224,196,.04));
+    border-color:rgba(47,224,196,.45);
+    box-shadow:inset 2px 0 0 var(--accent);
+  }
+  .r-btn .mini{width:56px;height:22px;flex:0 0 auto;overflow:visible}
+  .r-btn .rname{flex:1;line-height:1.15;font-weight:520;font-size:12.6px}
+  .r-btn .rbpm{font-family:var(--mono);font-size:11.5px;color:var(--muted);flex:0 0 auto}
+  .r-btn.active .rbpm{color:var(--accent)}
+  .r-btn.sel-note{font-size:10.5px;color:var(--muted)}
+
+  /* ---------- monitor ---------- */
+  .stage{display:flex;flex-direction:column;gap:16px;min-width:0}
+  .monitor{
+    scroll-margin-top:122px;
+    border:1px solid rgba(92,242,168,.20);border-radius:var(--radius);overflow:hidden;
+    background:linear-gradient(180deg,#08202a,#04121a 60%);
+    box-shadow:0 24px 60px -34px rgba(0,0,0,.95), inset 0 0 60px rgba(0,0,0,.5);
+  }
+  .monitor-top{
+    display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+    padding:12px 16px 10px;border-bottom:1px solid rgba(92,242,168,.14);
+    background:linear-gradient(180deg,rgba(10,36,44,.9),rgba(6,22,30,.6));
+  }
+  .fc-block{display:flex;align-items:flex-end;gap:9px;padding-right:20px;border-right:1px solid rgba(92,242,168,.16)}
+  .fc-heart{width:26px;height:26px;margin-bottom:14px;animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{transform:scale(1);opacity:.9}18%{transform:scale(1.16);opacity:1}36%{transform:scale(1);opacity:.9}}
+  .fc-num{
+    font-family:var(--mono);font-size:clamp(40px,5vw,54px);font-weight:700;line-height:.9;
+    color:var(--trace);text-shadow:0 0 26px rgba(92,242,168,.45);font-variant-numeric:tabular-nums;
+  }
+  .fc-meta{display:flex;flex-direction:column;padding-bottom:2px}
+  .fc-meta .lbl{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:rgba(142,169,187,.9)}
+  .fc-meta .unit{font-size:12px;color:var(--trace);opacity:.85}
+  .stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px 18px;flex:1;min-width:0}
+  .stat{min-width:0}
+  .stat .k{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:rgba(142,169,187,.85);white-space:nowrap}
+  .stat .v{font-size:13px;font-weight:600;color:#d8f3ea;line-height:1.25}
+  .stat .v.ok{color:var(--trace)}
+  .stat .v.warn{color:var(--warn)}
+  .stat .v.danger{color:var(--danger)}
+  .monitor-badge{
+    padding:5px 11px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.09em;
+    text-transform:uppercase;border:1px solid;
+  }
+  .sev-ref{color:#9fb8c8;border-color:rgba(159,184,200,.45);background:rgba(159,184,200,.10)}
+  .sev-vig{color:#ffd27a;border-color:rgba(255,182,72,.5);background:rgba(255,182,72,.12)}
+  .sev-urg{color:#ffa26b;border-color:rgba(255,140,80,.55);background:rgba(255,140,80,.14)}
+  .sev-emg{color:#ff8b95;border-color:rgba(255,95,109,.55);background:rgba(255,95,109,.15);animation:blink 1.5s infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.55}}
+
+  .canvas-wrap{padding:10px 12px 0;position:relative}
+  #ecg{display:block;width:100%;height:clamp(330px,45vh,480px);border-radius:10px}
+  .monitor-foot{
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 12px 12px;
+  }
+  .ctrl{
+    display:inline-flex;align-items:center;gap:7px;
+    background:rgba(122,197,218,.07);border:1px solid var(--line);color:#cfe2ee;
+    padding:7px 13px;border-radius:9px;font-size:12.5px;cursor:pointer;transition:.15s;
+  }
+  .ctrl:hover{background:rgba(122,197,218,.14);border-color:var(--line2);color:#fff}
+  .ctrl.on{background:rgba(47,224,196,.16);border-color:rgba(47,224,196,.55);color:#b9ffee}
+  .ctrl svg{width:13px;height:13px}
+  .foot-note{margin-left:auto;font-size:11px;color:var(--muted);letter-spacing:.03em}
+
+  /* ---------- ficha ---------- */
+  .ficha-head{
+    display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;
+    padding:16px 18px;border:1px solid var(--line);border-radius:var(--radius);
+    background:linear-gradient(120deg,rgba(47,224,196,.10),rgba(12,24,36,.9) 45%);
+  }
+  .ficha-head h2{font-size:22px;font-weight:680}
+  .ficha-head .tagline{color:#b9cedd;font-size:13.5px;margin-top:4px;max-width:80ch}
+  .ficha-head .rate-pill{
+    margin-left:auto;text-align:right;font-family:var(--mono);
+    font-size:12px;color:var(--muted);line-height:1.5;
+  }
+  .ficha-head .rate-pill b{display:block;font-size:20px;color:var(--accent);font-weight:700}
+  .cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
+  .card{
+    background:linear-gradient(180deg,rgba(16,35,48,.86),rgba(10,22,32,.86));
+    border:1px solid var(--line);border-radius:14px;padding:14px 16px 12px;
+  }
+  .card.wide{grid-column:1/-1}
+  .card h3{
+    font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+    display:flex;align-items:center;gap:8px;margin-bottom:9px;font-weight:650;
+  }
+  .card h3 .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent)}
+  .card.nursing h3 .dot{background:var(--accent2);box-shadow:0 0 10px var(--accent2)}
+  .card.alarm{border-color:rgba(255,95,109,.32);background:linear-gradient(180deg,rgba(46,18,24,.55),rgba(20,12,16,.7))}
+  .card.alarm h3 .dot{background:var(--danger);box-shadow:0 0 10px var(--danger)}
+  .card ul{margin:0;padding-left:0;list-style:none}
+  .card li{position:relative;padding-left:16px;margin-bottom:6px;font-size:13.4px;color:#cfe0eb}
+  .card li::before{
+    content:"";position:absolute;left:0;top:.62em;width:5px;height:5px;border-radius:50%;
+    background:rgba(47,224,196,.8);
+  }
+  .card.nursing li::before{background:rgba(75,184,255,.85)}
+  .card.alarm li::before{background:rgba(255,95,109,.85)}
+  .card p{font-size:13.4px;color:#cfe0eb;margin:0 0 .5em}
+  .kv{display:flex;gap:10px;font-size:13px;padding:5px 0;border-bottom:1px dashed rgba(122,197,218,.14)}
+  .kv:last-child{border-bottom:0}
+  .kv .k{color:var(--muted);min-width:118px;flex:0 0 auto}
+  .kv .v{color:#e2f1f8;font-weight:560}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+  .chip{
+    font-size:11.5px;padding:4px 9px;border-radius:999px;
+    background:rgba(122,197,218,.09);border:1px solid var(--line);color:#bdd6e4;
+  }
+  .callout{
+    margin-top:10px;padding:10px 12px;border-radius:10px;font-size:12.8px;
+    background:rgba(75,184,255,.08);border-left:3px solid var(--accent2);color:#cfe6f3;
+  }
+  .callout.red{background:rgba(255,95,109,.08);border-left-color:var(--danger)}
+
+  /* ---------- fundamentos ---------- */
+  .doc{max-width:1180px;margin:0 auto}
+  .doc h2{font-size:24px;margin:26px 0 6px}
+  .doc h2:first-child{margin-top:6px}
+  .doc .lead{color:#b9cedd;font-size:14.5px;max-width:92ch}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:14px}
+  .doc .card li{font-size:13.6px}
+  .steps{counter-reset:s;list-style:none;padding:0;margin:0}
+  .steps li{
+    counter-increment:s;position:relative;padding:9px 0 9px 42px;font-size:13.6px;
+    border-bottom:1px dashed rgba(122,197,218,.14);color:#cfe0eb;
+  }
+  .steps li:last-child{border-bottom:0}
+  .steps li::before{
+    content:counter(s);position:absolute;left:0;top:8px;width:26px;height:26px;border-radius:8px;
+    display:grid;place-items:center;font-family:var(--mono);font-size:12.5px;font-weight:700;
+    color:#052a26;background:linear-gradient(150deg,#5ef0d0,#28cdb8);
+  }
+  table.tbl{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px}
+  table.tbl th{
+    text-align:left;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--muted);padding:7px 8px;border-bottom:1px solid var(--line2);font-weight:650;
+  }
+  table.tbl td{padding:7px 8px;border-bottom:1px dashed rgba(122,197,218,.13);color:#d3e5ef}
+  table.tbl td.mono{font-family:var(--mono);color:var(--accent)}
+  .diagram{width:100%;height:auto;display:block}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;font-size:12px;color:var(--muted)}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px}
+
+  /* ---------- quiz ---------- */
+  .quiz-top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+  .score{
+    font-family:var(--mono);font-size:15px;color:var(--accent);
+    background:rgba(47,224,196,.10);border:1px solid rgba(47,224,196,.35);
+    padding:7px 14px;border-radius:10px;
+  }
+  .q-card{
+    background:linear-gradient(180deg,rgba(16,35,48,.86),rgba(10,22,32,.86));
+    border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:12px;
+  }
+  .q-card .q-num{font-size:10.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+  .q-card .q-text{font-weight:600;font-size:14.5px;margin-bottom:11px}
+  .q-opts{display:grid;gap:7px}
+  .q-opt{
+    text-align:left;background:rgba(122,197,218,.05);border:1px solid var(--line);color:#d7e8f1;
+    padding:9px 13px;border-radius:9px;font-size:13.4px;cursor:pointer;transition:.15s;
+  }
+  .q-opt:hover:not(:disabled){background:rgba(122,197,218,.13);border-color:var(--line2)}
+  .q-opt:disabled{cursor:default}
+  .q-opt.correct{border-color:rgba(92,217,122,.7);background:rgba(92,217,122,.16);color:#d6ffe0;font-weight:600}
+  .q-opt.wrong{border-color:rgba(255,95,109,.7);background:rgba(255,95,109,.14);color:#ffd6da}
+  .q-exp{margin-top:10px;font-size:13px;color:#c3dbe8;display:none;border-left:3px solid var(--accent2);padding-left:11px}
+  .q-exp.show{display:block}
+
+  .media-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 14px}
+  .pill{
+    font-size:11.5px;padding:5px 11px;border-radius:999px;border:1px solid var(--line);
+    background:rgba(122,197,218,.06);color:#bdd6e4;
+  }
+  .pill b{color:var(--accent);font-weight:650}
+
+  @media (max-width:1120px){
+    .shell{grid-template-columns:1fr}
+    .monitor-top{display:grid;grid-template-columns:1fr auto;gap:8px 14px;align-items:center}
+    .fc-block{grid-column:1;grid-row:1;border-right:0;padding-right:0}
+    .monitor-badge{grid-column:2;grid-row:1;justify-self:end}
+    .stat-grid{grid-column:1 / -1;grid-row:2;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+    .selector{position:static;max-height:none;display:block}
+    .selector .groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:4px 12px}
+    .cards{grid-template-columns:1fr}
+    .stat-grid{grid-template-columns:repeat(2,minmax(96px,1fr))}
+  }
+  @media (max-width:640px){
+    main{padding:14px 12px 40px}
+    .topbar{padding:10px 12px;gap:12px}
+    .tabs{margin-left:0;width:100%}
+    .tab{flex:1;text-align:center;padding:8px 10px;font-size:12.5px}
+    .brand p{display:none}
+    #ecg{height:min(44vh,320px)}
+    .ficha-head .rate-pill{margin-left:0;text-align:left}
+    .selector{padding:10px 8px 8px}
+    .selector .groups{grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 8px}
+    .sel-group{margin-bottom:6px}
+    .sel-group .g-title{font-size:9px;letter-spacing:.08em;padding:4px 6px 3px}
+    .r-btn{padding:6px 7px;font-size:11.5px;gap:6px;align-items:center}
+    .r-btn .mini{display:none}
+    .r-btn .rname{font-size:11.5px}
+    .r-btn .rbpm{font-size:10.5px}
+    .monitor-top{gap:10px;padding:10px 12px}
+    .fc-block{padding-right:12px}
+    .media-bar .pill:nth-child(2){display:none}
+    .foot-note{margin-left:0;flex:1 1 100%;font-size:10px}
+  }
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:rgba(122,197,218,.22);border-radius:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="beat">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M2 12h3.2l1.6-4 2.4 8 2-6 1.6 2H22" stroke="#5cf2a8" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div>
+      <h1>Arritmias cardíacas · Enfermería</h1>
+      <p>Monitor de ritmos en tiempo real · guía clínica universitaria</p>
+    </div>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="Secciones">
+    <button class="tab active" data-tab="monitor" role="tab" aria-selected="true">Monitor de ritmos</button>
+    <button class="tab" data-tab="fund" role="tab" aria-selected="false">Fundamentos ECG</button>
+    <button class="tab" data-tab="quiz" role="tab" aria-selected="false">Autoevaluación</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ============ MONITOR ============ -->
+  <section class="tabpanel active" id="tab-monitor">
+    <div class="shell">
+      <aside class="selector">
+        <h2>Selecciona el ritmo</h2>
+        <div class="groups" id="groups"></div>
+      </aside>
+
+      <div class="stage">
+        <div class="media-bar">
+          <span class="pill">Monitorización continua · derivación <b>II</b></span>
+          <span class="pill">25 mm/s · 10 mm/mV</span>
+          <span class="pill" id="pill-rate">FC <b>70 lpm</b></span>
+        </div>
+
+        <div class="monitor">
+          <div class="monitor-top">
+            <div class="fc-block">
+              <svg class="fc-heart" viewBox="0 0 24 24" fill="#5cf2a8" aria-hidden="true">
+                <path d="M12 21s-7.6-4.7-9.4-9.1C1.3 8.2 3.6 5 7.1 5c2 0 3.6 1.1 4.9 2.7C13.3 6.1 14.9 5 16.9 5c3.5 0 5.8 3.2 4.5 6.9C19.6 16.3 12 21 12 21z"/>
+              </svg>
+              <div class="fc-num" id="fc">70</div>
+              <div class="fc-meta">
+                <span class="lbl">lpm</span>
+                <span class="unit">ventricular</span>
+              </div>
+            </div>
+            <div class="stat-grid">
+              <div class="stat"><div class="k">Ritmo</div><div class="v ok" id="s-rhythm">Regular</div></div>
+              <div class="stat"><div class="k">Onda P</div><div class="v" id="s-p">Sinusal</div></div>
+              <div class="stat"><div class="k">Intervalo PR</div><div class="v" id="s-pr">0,16 s</div></div>
+              <div class="stat"><div class="k">QRS</div><div class="v" id="s-qrs">0,08 s</div></div>
+            </div>
+            <div class="monitor-badge sev-ref" id="sev">Referencia</div>
+          </div>
+
+          <div class="canvas-wrap">
+            <canvas id="ecg" aria-label="Trazado electrocardiográfico animado"></canvas>
+          </div>
+
+          <div class="monitor-foot">
+            <button class="ctrl on" id="btn-play">
+              <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+              <span id="play-label">Pausar</span>
+            </button>
+            <button class="ctrl" id="btn-speed">Velocidad 1×</button>
+            <button class="ctrl" id="btn-sound">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9v6h3l5 4V5L7 9H4z" stroke-linejoin="round"/><path d="M16 8.5a4.5 4.5 0 010 7"/></svg>
+              Sonido
+            </button>
+            <button class="ctrl" id="btn-reset">Reiniciar trazo</button>
+            <span class="foot-note" id="foot-note">Trazado sintético didáctico generado en tiempo real · no usar con fines diagnósticos</span>
+          </div>
+        </div>
+
+        <div class="ficha-head">
+          <div>
+            <h2 id="f-name">Ritmo sinusal normal</h2>
+            <div class="tagline" id="f-tagline"></div>
+          </div>
+          <div class="rate-pill">
+            <b id="f-rate">70 lpm</b>
+            <span id="f-ratenote">FC de referencia</span>
+          </div>
+        </div>
+
+        <div class="cards" id="cards"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FUNDAMENTOS ============ -->
+  <section class="tabpanel" id="tab-fund">
+    <div class="doc">
+      <h2>Fundamentos electrofisiológicos e interpretación</h2>
+      <p class="lead">Base imprescindible para la lectura sistemática del electrocardiograma y la toma de decisiones de enfermería ante cualquier disritmia.</p>
+
+      <div class="grid2">
+        <div class="card">
+          <h3><span class="dot"></span>Sistema de conducción</h3>
+          <svg class="diagram" viewBox="0 0 460 330" role="img" aria-label="Esquema del sistema de conducción cardíaco">
+            <defs>
+              <linearGradient id="heartG" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#15384a"/><stop offset="1" stop-color="#0b1e2a"/>
+              </linearGradient>
+            </defs>
+            <path d="M230 305C128 240 70 186 70 132 70 92 99 66 134 66c34 0 66 24 96 58 30-34 62-58 96-58 35 0 64 26 64 66 0 54-58 108-160 173z"
+                  fill="url(#heartG)" stroke="rgba(122,197,218,.45)" stroke-width="1.6"/>
+            <path d="M232 66v112" stroke="rgba(122,197,218,.22)" stroke-width="1.4" stroke-dasharray="5 5"/>
+            <!-- vías internodales -->
+            <path d="M300 108c-18 14-34 26-46 42" stroke="#4bb8ff" stroke-width="1.8" fill="none" stroke-dasharray="6 5" opacity=".8"/>
+            <path d="M296 116c-30 4-44 16-44 34" stroke="#4bb8ff" stroke-width="1.2" fill="none" stroke-dasharray="4 6" opacity=".5"/>
+            <!-- nodo SA -->
+            <circle cx="303" cy="103" r="9" fill="#2fe0c4"/><circle cx="303" cy="103" r="16" fill="none" stroke="#2fe0c4" stroke-opacity=".35"/>
+            <!-- nodo AV -->
+            <rect x="240" y="150" width="20" height="16" rx="5" fill="#4bb8ff"/>
+            <!-- haz de His -->
+            <path d="M250 166v46" stroke="#ffd27a" stroke-width="4" stroke-linecap="round"/>
+            <!-- ramas -->
+            <path d="M250 212c-14 18-30 28-44 42" stroke="#ffd27a" stroke-width="3" stroke-linecap="round"/>
+            <path d="M250 212c14 20 28 30 44 44" stroke="#ffd27a" stroke-width="3" stroke-linecap="round"/>
+            <!-- purkinje -->
+            <path d="M206 254c-16 8-30 14-40 24M206 254c-6 14-8 24-8 34" stroke="#ffb648" stroke-width="1.6" fill="none" opacity=".85"/>
+            <path d="M294 256c16 8 28 14 36 24M294 256c6 14 8 24 8 34" stroke="#ffb648" stroke-width="1.6" fill="none" opacity=".85"/>
+            <!-- labels -->
+            <g font-family="var(--font)" font-size="11.5" fill="#cfe0eb">
+              <text x="330" y="96">Nodo SA</text><text x="330" y="110" fill="#8ea9bb" font-size="10">60–100 lpm</text>
+              <line x1="216" y1="160" x2="240" y2="158" stroke="#4bb8ff" stroke-width="1" opacity=".65"/>
+              <text x="212" y="150" text-anchor="end">Nodo AV</text><text x="212" y="164" text-anchor="end" fill="#8ea9bb" font-size="10">retraso 0,08–0,10 s</text>
+              <text x="212" y="178" text-anchor="end" fill="#8ea9bb" font-size="10">filtro / bloqueo</text>
+              <text x="262" y="196" fill="#ffd27a" font-size="10.5">Haz de His</text>
+              <text x="88" y="272" fill="#ffb648" font-size="10.5">Purkinje</text>
+              <text x="316" y="284" fill="#ffb648" font-size="10.5">Purkinje</text>
+            </g>
+          </svg>
+          <p style="margin-top:8px">El estímulo nace en el <b>nodo sinusal</b> (automatismo, 60–100 lpm), se difunde por las vías internodales, sufre un <b>retraso decremental en el nodo AV</b> (permite el llenado ventricular) y se propaga por el <b>haz de His, sus ramas y la red de Purkinje</b> para una contracción ventricular sincrónica. Cualquier fallo de automatismo, conducción o reentrada genera una arritmia.</p>
+        </div>
+
+        <div class="card">
+          <h3><span class="dot"></span>Calibración del papel y unidades</h3>
+          <div class="kv"><span class="k">Velocidad</span><span class="v">25 mm/s → 1 mm = 0,04 s · 5 mm (cuadro grande) = 0,20 s</span></div>
+          <div class="kv"><span class="k">Voltaje</span><span class="v">10 mm/mV → 1 mm = 0,1 mV</span></div>
+          <div class="kv"><span class="k">FC regular</span><span class="v">300 ÷ nº de cuadros grandes entre dos R</span></div>
+          <div class="kv"><span class="k">FC irregular</span><span class="v">Complejos en 6 s × 10 (o contar 30 s × 2)</span></div>
+          <div class="kv"><span class="k">PR normal</span><span class="v">0,12–0,20 s (3–5 cuadros pequeños)</span></div>
+          <div class="kv"><span class="k">QRS normal</span><span class="v">&lt; 0,12 s (menos de 3 cuadros pequeños)</span></div>
+          <div class="kv"><span class="k">QTc normal</span><span class="v">≤ 0,44 s (varón) / ≤ 0,46 s (mujer)</span></div>
+          <div class="callout">Regla rápida de los 300: 1 cuadro grande = 300 lpm · 2 = 150 · 3 = 100 · 4 = 75 · 5 = 60 · 6 = 50 lpm.</div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h3><span class="dot"></span>Lectura sistemática del trazado</h3>
+          <ol class="steps">
+            <li><b>Frecuencia:</b> ¿taquicardia (&gt;100), normal (60–100) o bradicardia (&lt;60)?</li>
+            <li><b>Regularidad:</b> compara los intervalos R-R (y P-P) cuadro a cuadro.</li>
+            <li><b>Onda P:</b> ¿existe, es sinusal, precede a cada QRS con relación fija?</li>
+            <li><b>Intervalo PR:</b> constante o variable, dentro de 0,12–0,20 s.</li>
+            <li><b>Complejo QRS:</b> estrecho (&lt;0,12 s, origen supraventricular) o ancho (origen ventricular o aberrante).</li>
+            <li><b>Relación auriculoventricular:</b> ¿cuántas P por cada QRS? ¿hay P bloqueadas?</li>
+            <li><b>QT/QTc y onda T:</b> QT largo, T invertida, R sobre T.</li>
+            <li><b>Contexto clínico:</b> ¿el paciente está estable o inestable? Determina la conducta.</li>
+          </ol>
+        </div>
+
+        <div class="card alarm">
+          <h3><span class="dot"></span>Criterios de inestabilidad hemodinámica (ERC / AHA)</h3>
+          <ul>
+            <li><b>Shock / hipotensión:</b> TAS &lt; 90 mmHg con signos de hipoperfusión periférica (piel fría, moteada, relleno capilar &gt; 2 s, oliguria).</li>
+            <li><b>Alteración del nivel de conciencia</b> o síncope por hipoperfusión cerebral.</li>
+            <li><b>Dolor torácico isquémico agudo</b> por aumento desproporcionado del consumo de O₂.</li>
+            <li><b>Insuficiencia cardíaca aguda:</b> disnea, crepitantes, congestión pulmonar, edema agudo.</li>
+          </ul>
+          <div class="callout red"><b>Regla de oro:</b> si hay inestabilidad → intervención eléctrica urgente (cardioversión sincronizada si hay pulso; desfibrilación si no lo hay). Si el paciente está estable → tratamiento farmacológico, etiológico y monitorización.</div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h3><span class="dot"></span>Ruta de decisión rápida</h3>
+          <table class="tbl">
+            <thead><tr><th>Situación</th><th>Conducta inicial</th></tr></thead>
+            <tbody>
+              <tr><td>Sin pulso · FV / TV sin pulso</td><td>RCP + <b>desfibrilación</b> inmediata</td></tr>
+              <tr><td>Sin pulso · asistolia / AESP</td><td>RCP + adrenalina, <b>no desfibrilar</b>, buscar 5H/5T</td></tr>
+              <tr><td>Taquicardia con pulso e inestable</td><td>Cardioversión <b>sincronizada</b></td></tr>
+              <tr><td>Taquicardia estable, QRS estrecho</td><td>Maniobras vagales / adenosina; control de frecuencia</td></tr>
+              <tr><td>Taquicardia estable, QRS ancho</td><td>Amiodarona / procainamida; valorar TV</td></tr>
+              <tr><td>Bradicardia inestable</td><td>Atropina → marcapasos transcutáneo / cronótropos</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card nursing">
+          <h3><span class="dot"></span>Seguridad del paciente y del equipo</h3>
+          <ul>
+            <li><b>SYNC comprobado</b> antes de una cardioversión: cada onda R debe llevar marca de sincronización; un choque sobre la onda T puede desencadenar FV.</li>
+            <li><b>Parches anteroposteriores</b> sobre piel seca y rasurada; revisar la piel bajo los electrodos tras la descarga.</li>
+            <li><b>Retirar</b> prótesis dentales, cadenas y piercings; oxígeno alejado del tórax; nadie en contacto con la cama al descargar.</li>
+            <li><b>Alarmas ajustadas</b> a la situación clínica del paciente, no silenciadas de forma permanente.</li>
+            <li><b>Registro</b> horario: ritmo, FC, PA, SatO₂, nivel de conciencia, diuresis y eventos terapéuticos.</li>
+            <li><b>Carro de parada</b> revisado y operativo; desfibrilador con batería y parches en fecha.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="tabpanel" id="tab-quiz">
+    <div class="doc">
+      <h2>Autoevaluación</h2>
+      <p class="lead">Doce preguntas de aplicación clínica enfermera. Elige una respuesta para ver la justificación razonada.</p>
+      <div class="quiz-top">
+        <span class="score" id="score">Aciertos: 0 / 10</span>
+        <button class="ctrl" id="btn-quiz-reset">Reiniciar cuestionario</button>
+      </div>
+      <div id="quiz"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* =====================================================================
+   1. MOTOR DE SEÑAL ECG SINTÉTICA
+   ===================================================================== */
+const FS = 400;            // Hz
+const DUR = 60;            // segundos de bucle
+
+const rr = bpm => 60 / bpm;
+function gauss(x, s) { const z = x / s; return Math.exp(-0.5 * z * z); }
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/* Un latido: t0 = inicio de la onda P (o del QRS si no hay P) */
+function beat(t0, o) {
+  return Object.assign({
+    t0,
+    p: true, pAmp: 0.16, pMu: 0.05,
+    qrsOn: 0.16, qrs: 'narrow', qrsAmp: 1,
+    tAmp: 0.30, tDelay: 0.23, tSigma: 0.055
+  }, o || {});
+}
+
+function beatSig(dt, b) {
+  let v = 0;
+  if (b.p) v += b.pAmp * gauss(dt - b.pMu, 0.0205);
+  const q = b.qrsOn;
+  if (b.qrs === 'narrow') {
+    v += -0.085 * gauss(dt - (q + 0.006), 0.0070);
+    v += 1.05 * b.qrsAmp * gauss(dt - (q + 0.026), 0.0105);
+    v += -0.22 * b.qrsAmp * gauss(dt - (q + 0.047), 0.0100);
+  } else if (b.qrs === 'wide') {
+    v += -0.18 * b.qrsAmp * gauss(dt - (q + 0.016), 0.0130);
+    v += 0.95 * b.qrsAmp * gauss(dt - (q + 0.058), 0.0280);
+    v += 0.45 * b.qrsAmp * gauss(dt - (q + 0.108), 0.0300);
+  }
+  if (b.tAmp && b.qrs !== 'none') v += b.tAmp * gauss(dt - (q + b.tDelay), b.tSigma);
+  return v;
+}
+
+/* Ondas F del flutter (dientes de sierra) */
+function flutterBase(t) {
+  /* diente de sierra: descenso lento y ascenso brusco (negativo en II) */
+  const fr = ((t / 0.2) % 1 + 1) % 1;
+  if (fr < 0.86) return 0.09 - 0.27 * (fr / 0.86);
+  return -0.18 + 0.27 * ((fr - 0.86) / 0.14);
+}
+/* Ondas f de la fibrilación auricular */
+function afBase(t) {
+  return 0.048 * Math.sin(2 * Math.PI * 5.2 * t + 0.7)
+       + 0.038 * Math.sin(2 * Math.PI * 6.7 * t + 2.1)
+       + 0.028 * Math.sin(2 * Math.PI * 8.1 * t + 4.3)
+       + 0.042 * Math.sin(2 * Math.PI * 4.3 * t + 5.5)
+       + 0.020 * Math.sin(2 * Math.PI * 9.3 * t + 1.2);
+}
+/* Fibrilación ventricular: caos con modulación */
+function fvBase(t) {
+  const c = [[2.6, 0.22, 0.4], [3.4, 0.18, 1.9], [4.7, 0.16, 3.1],
+             [5.9, 0.13, 5.2], [7.3, 0.10, 2.6], [1.7, 0.14, 0.9]];
+  let v = 0;
+  for (let i = 0; i < c.length; i++) v += c[i][1] * Math.sin(2 * Math.PI * c[i][0] * t + c[i][2]);
+  return v * (0.72 + 0.34 * Math.sin(2 * Math.PI * 0.23 * t + 1.1));
+}
+
+/* Construye la señal completa y los tiempos de QRS */
+function buildWave(r, T) {
+  T = T || DUR;
+  const N = Math.round(T * FS);
+  const out = new Float32Array(N);
+  const ctx = r.gen(T);
+  const beats = ctx.beats || [];
+  const base = ctx.base || null;
+
+  for (let i = 0; i < N; i++) {
+    const t = i / FS;
+    out[i] = base ? base(t) : 0;
+  }
+  const qrsTimes = [];
+  for (let k = 0; k < beats.length; k++) {
+    const b = beats[k];
+    const span = b.qrs === 'none' ? 0.18 : 0.78;
+    let i0 = Math.floor((b.t0 - 0.06) * FS);
+    let i1 = Math.ceil((b.t0 + span) * FS);
+    if (i1 < 0 || i0 > N) continue;
+    if (i0 < 0) i0 = 0;
+    if (i1 > N) i1 = N;
+    for (let i = i0; i < i1; i++) out[i] += beatSig(i / FS - b.t0, b);
+    if (b.qrs !== 'none' && b.t0 + b.qrsOn < T) qrsTimes.push(b.t0 + b.qrsOn + 0.026);
+  }
+  qrsTimes.sort((a, b) => a - b);
+  /* ruido de señal mínimo para realismo */
+  let seed = 12345;
+  for (let i = 0; i < N; i++) {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    out[i] += ((seed / 0x7fffffff) - 0.5) * 0.012;
+  }
+  return { samples: out, qrsTimes, beats };
+}
+
+/* =====================================================================
+   2. BANCO DE RITMOS
+   ===================================================================== */
+const SEV = {
+  ref: { cls: 'sev-ref', label: 'Referencia' },
+  vig: { cls: 'sev-vig', label: 'Vigilancia' },
+  urg: { cls: 'sev-urg', label: 'Urgente' },
+  emg: { cls: 'sev-emg', label: 'Emergencia' }
+};
+
+const GROUPS = [
+  { id: 'sinusal', label: 'Ritmos sinusales' },
+  { id: 'sv', label: 'Taquiarritmias supraventriculares' },
+  { id: 'v', label: 'Arritmias ventriculares y paro' },
+  { id: 'av', label: 'Bloqueos auriculoventriculares' }
+];
+
+const RHYTHMS = [
+/* ---------------------------------------------------------------- 1 */
+{
+  id: 'sinusal', group: 'sinusal', name: 'Ritmo sinusal normal',
+  rate: 70, rateNote: 'FC de referencia (60–100 lpm)', sev: 'ref',
+  m: { rhythm: ['Regular', 'ok'], p: 'Sinusal (+ en II)', pr: '0,16 s', qrs: '0,08 s' },
+  tagline: 'Patrón de referencia: el estímulo nace en el nodo sinusal y se conduce a los ventrículos con una relación 1:1.',
+  key: [
+    'Onda <b>P positiva en II, III y aVF</b>, redondeada y de morfología constante, que precede a cada QRS.',
+    '<b>Relación P-QRS 1:1</b> con intervalo PR fijo entre 0,12 y 0,20 s.',
+    '<b>QRS estrecho</b> (&lt; 0,12 s): la activación ventricular utiliza el sistema His-Purkinje.',
+    '<b>FC 60–100 lpm</b> con intervalo R-R constante (± 1 cuadro pequeño).',
+    'QT/QTc dentro de límites y onda T concordante con el QRS.'
+  ],
+  patho: 'El automatismo del nodo SA (fase 4 del potencial de acción) genera el impulso. El nodo AV introduce un retraso fisiológico de 0,08–0,10 s que garantiza el llenado ventricular telediastólico, y la red de Purkinje despolariza ambos ventrículos de forma casi simultánea.',
+  causes: ['Situación fisiológica de referencia', 'Reposo y sueño (FC más baja)', 'Adaptación al entrenamiento aeróbico'],
+  treat: ['No requiere tratamiento específico.', 'Es el patrón de comparación para identificar cualquier disritmia.'],
+  nursing: [
+    'Verificar la calidad de la señal: electrodos bien adheridos, piel seca y cableado sin tracción.',
+    'Comprobar que la FC del monitor coincide con la palpación del pulso central.',
+    'Documentar el ritmo de base al ingreso como referencia para comparaciones futuras.',
+    'Ajustar las alarmas de FC al rango del paciente (p. ej. 50–110 lpm).'
+  ],
+  alarm: [
+    'Cambio brusco de FC o de regularidad respecto al trazado basal.',
+    'Aparición de pausas, extrasístoles frecuentes o QRS ancho.'
+  ],
+  pearl: 'Ante cualquier duda diagnóstica, compara siempre con un trazado sinusal previo del mismo paciente: la mayoría de las arritmias se reconocen por contraste.',
+  gen: T => { const B = []; for (let t = 0; t < T + 1; t += rr(70)) B.push(beat(t)); return { beats: B }; }
+},
+/* ---------------------------------------------------------------- 2 */
+{
+  id: 'ts', group: 'sinusal', name: 'Taquicardia sinusal',
+  rate: 130, rateNote: 'FC típica 100–150 lpm', sev: 'vig',
+  m: { rhythm: ['Regular', 'ok'], p: 'Sinusal (+ en II)', pr: '0,14 s', qrs: '0,08 s' },
+  tagline: 'FC &gt; 100 lpm con ondas P de morfología sinusal: casi siempre una respuesta adaptativa y no una arritmia primaria.',
+  key: [
+    'Ritmo <b>regular</b> con FC &gt; 100 lpm (en reposo, habitualmente 100–150 lpm).',
+    '<b>Onda P sinusal</b> positiva en II, III y aVF, una por cada QRS.',
+    '<b>PR fijo</b>, normal o ligeramente acortado a frecuencias muy altas.',
+    '<b>QRS estrecho</b> (&lt; 0,12 s) sin aberrancia.',
+    'A frecuencias extremas la P puede quedar oculta en la onda T precedente.'
+  ],
+  patho: 'Aumento de la pendiente de despolarización diastólica de la fase 4 del nodo SA por predominio simpático (receptores β) o inhibición vagal. No es una alteración miocárdica primaria, sino la respuesta a un factor desencadenante.',
+  causes: ['Dolor, fiebre, ansiedad', 'Hipovolemia, deshidratación, shock', 'Hipoxemia, anemia grave, tromboembolismo pulmonar', 'Sepsis, tirotoxicosis', 'Simpaticomiméticos, cafeína, cocaína, abstinencia alcohólica'],
+  treat: [
+    'Tratar la causa: <b>no se usan antiarrítmicos ni cardioversión</b> (formalmente contraindicada).',
+    'Cristaloides si hipovolemia; analgesia; antitérmicos; oxigenoterapia si hipoxia.',
+    'Betabloqueante solo si la causa lo justifica y el paciente lo tolera.'
+  ],
+  nursing: [
+    'Monitorización ECG continua y constantes horarias: SatO₂, temperatura, PA y FC.',
+    'Vigilar signos de bajo gasto: relleno capilar, diuresis horaria, perfusión distal y nivel de conciencia.',
+    'Administrar analgesia y antitérmicos prescritos, reevaluando con escalas validadas.',
+    'Garantizar accesos vasculares permeables y reducir la sobreestimulación ambiental (luz, ruido, visitas).',
+    'Vigilar hemoglobina y equilibrio ácido-base si se sospecha anemia o sepsis.'
+  ],
+  alarm: [
+    'Angina o cambios del ST en pacientes con cardiopatía isquémica (se acorta la diástole y la perfusión coronaria).',
+    'Hipotensión, taquipnea, oliguria o deterioro del nivel de conciencia.',
+    'FC &gt; 150 lpm mantenida sin causa evidente: descartar TSVP, FA o flutter.'
+  ],
+  pearl: 'Taquicardia sinusal a 130 lpm en un postoperatorio: busca dolor, fiebre, hipovolemia o anemia antes de pensar en antiarrítmicos.',
+  gen: T => {
+    const B = [];
+    for (let t = 0; t < T + 1; t += rr(130)) B.push(beat(t, { pAmp: 0.19, qrsOn: 0.135, tAmp: 0.22, tDelay: 0.21, tSigma: 0.05 }));
+    return { beats: B };
+  }
+},
+/* ---------------------------------------------------------------- 3 */
+{
+  id: 'bs', group: 'sinusal', name: 'Bradicardia sinusal',
+  rate: 45, rateNote: 'FC &lt; 60 lpm (clínica < 50)', sev: 'vig',
+  m: { rhythm: ['Regular', 'ok'], p: 'Sinusal (+ en II)', pr: '0,18 s', qrs: '0,08 s' },
+  tagline: 'FC &lt; 60 lpm de origen sinusal: puede ser fisiológica o el primer signo de un bloqueo, una isquemia o una intoxicación.',
+  key: [
+    'Ritmo <b>regular</b> con FC &lt; 60 lpm; la repercusión clínica suele aparecer por debajo de 50 lpm.',
+    '<b>Onda P sinusal constante</b>, una por cada QRS (relación 1:1).',
+    '<b>PR estable</b> dentro de 0,12–0,20 s.',
+    '<b>QRS estrecho</b>, salvo bloqueo de rama asociado.',
+    'Gasto cardíaco = volumen sistólico × FC: al caer la FC aparece bajo gasto.'
+  ],
+  patho: 'Menor cadencia de descarga del nodo SA por deceleración de la corriente marcapasos (canales If), por estimulación colinérgica vagal o por degeneración del tejido de conducción.',
+  causes: ['Deportistas de resistencia y sueño (fisiológica)', 'IAM inferior', 'Hipotermia, hiperpotasemia', 'Hipertensión intracraneal (reflejo de Cushing)', 'Betabloqueantes, digoxina, calcioantagonistas no dihidropiridínicos'],
+  treat: [
+    'Solo tratar si existe <b>inestabilidad hemodinámica</b>.',
+    '<b>Atropina IV</b>: 1 mg (AHA) o 0,5 mg (ERC), repetible cada 3–5 min hasta un máximo acumulado de 3 mg.',
+    'Si refractaria o el bloqueo es infranodal: adrenalina 2–10 µg/min, dopamina o isoprenalina.',
+    '<b>Marcapasos transcutáneo</b> como puente al marcapasos definitivo.'
+  ],
+  nursing: [
+    'Atropina en <b>bolo IV rápido</b>: dosis &lt; 0,5 mg o lentas producen bradicardia paradójica por excitación central de los núcleos vagales.',
+    'Parches del marcapasos transcutáneo en configuración <b>anteroposterior</b>, sobre piel rasurada y seca.',
+    'Generador en <b>modo a demanda</b>, FC inicial 60–80 lpm, subiendo mA hasta la <b>captura eléctrica</b> (espícula + QRS ancho + T de polaridad opuesta).',
+    'Valorar perfusión (relleno capilar, diuresis), PA y nivel de conciencia durante toda la intervención.',
+    'Comprobar que atropina, adrenalina y marcapasos están disponibles antes de que el paciente se deteriore.'
+  ],
+  alarm: [
+    'Síncope o presíncope, hipotensión, diaforesis.',
+    'Dolor torácico, insuficiencia cardíaca aguda, oliguria.',
+    'FC &lt; 40 lpm o pausas &gt; 3 s.',
+    'Progresión a bloqueo AV avanzado o aparición de QRS ancho.'
+  ],
+  pearl: 'Pregunta siempre por fármacos frenadores antes de etiquetar una bradicardia: betabloqueante, digoxina o diltiazem explican muchas bradicardias "inexplicables".',
+  gen: T => {
+    const B = [];
+    for (let t = 0; t < T + 1; t += rr(45)) B.push(beat(t, { pAmp: 0.16, qrsOn: 0.17, tAmp: 0.28 }));
+    return { beats: B };
+  }
+},
+/* ---------------------------------------------------------------- 4 */
+{
+  id: 'tsvp', group: 'sv', name: 'Taquicardia supraventricular paroxística',
+  rate: 180, rateNote: 'FC típica 150–250 lpm', sev: 'urg',
+  m: { rhythm: ['Regular', 'ok'], p: 'No visible (P retrógrada)', pr: 'No valorable', qrs: '0,06 s' },
+  tagline: 'Taquicardia regular, estrecha y de inicio brusco: el circuito de reentrada nodal responde a maniobras vagales y adenosina.',
+  key: [
+    '<b>FC 150–250 lpm</b> (habitualmente ≈ 180 lpm en reposo).',
+    'Ritmo <b>extremadamente regular</b>.',
+    '<b>QRS estrecho</b> (&lt; 0,12 s), salvo aberrancia.',
+    '<b>P no visible</b> o retrógrada (invertida en II, III y aVF), oculta en el QRS o en la T.',
+    'Inicio y fin <b>súbitos</b> ("en paroxismo").'
+  ],
+  patho: 'Reentrada en el nodo AV o en una vía accesoria. El impulso circula de forma sostenida y despolariza los ventrículos a frecuencia muy alta, acortando la diástole y el llenado ventricular.',
+  causes: ['Reentrada nodal auriculoventricular (la más frecuente)', 'Vía accesoria (síndrome de Wolff-Parkinson-White)', 'Estrés, cafeína, alcohol, hipertiroidismo, esfuerzo'],
+  treat: [
+    'Inestable: <b>cardioversión eléctrica sincronizada</b>.',
+    'Estable: <b>maniobras vagales</b> (Valsalva modificado, masaje del seno carotídeo) y <b>adenosina 6 mg IV</b> en bolo rápido; si no revierte, 12 mg.',
+    'Recurrente o refractaria: betabloqueante o calcioantagonista; ablación del circuito.'
+  ],
+  nursing: [
+    'Adenosina: <b>bolo muy rápido</b> en una vía proximal, con lavado inmediato de suero (vida media de segundos).',
+    'Advertir al paciente de rubor facial, opresión torácica, disnea o sensación de muerte inminente: son transitorios.',
+    'Registrar el trazado durante y después de la administración: la pausa breve posterior documenta la reversión.',
+    'Monitorizar PA al minuto, SatO₂ y nivel de conciencia; mantener el desfibrilador preparado.',
+    'Adenosina contraindicada en asma grave y en preexcitación con fibrilación auricular.'
+  ],
+  alarm: [
+    'Inestabilidad: dolor torácico, hipotensión o insuficiencia cardíaca aguda → cardioversión sincronizada.',
+    'FC &gt; 220 lpm o QRS ancho (descartar TV o preexcitación).',
+    'Síncope o presíncope.'
+  ],
+  pearl: 'Una taquicardia estrecha regular a 180 lpm sin P visible es TSVP hasta que se demuestre lo contrario: prepara adenosina y desfibrilador a la vez.',
+  gen: T => {
+    const B = [];
+    for (let t = 0; t < T + 1; t += rr(180)) B.push(beat(t, { p: false, qrsOn: 0.035, tAmp: 0.22, tDelay: 0.19, tSigma: 0.05 }));
+    return { beats: B };
+  }
+},
+/* ---------------------------------------------------------------- 5 */
+{
+  id: 'fa', group: 'sv', name: 'Fibrilación auricular',
+  rate: 105, rateNote: 'Respuesta ventricular variable', sev: 'urg',
+  m: { rhythm: ['Irregular', 'warn'], p: 'Ausente (ondas f)', pr: 'No valorable', qrs: '0,08 s' },
+  tagline: 'Sin ondas P, línea de base fibrilatoria y respuesta ventricular irregular: la arritmia sostenida más frecuente y con riesgo tromboembólico.',
+  key: [
+    'Intervalos <b>R-R totalmente irregulares</b> ("irregularmente irregular").',
+    '<b>Sin ondas P</b>; en su lugar, ondas f de amplitud y morfología variables.',
+    '<b>QRS estrecho</b>, salvo aberrancia o bloqueo de rama.',
+    'Frecuencia ventricular variable: &lt; 100 (controlada), 100–150 (rápida) o &gt; 150 (alta respuesta).',
+    '<b>Déficit de pulso</b>: se auscultan más latidos de los que se palpan en la periferia.'
+  ],
+  patho: 'Múltiples frentes de onda caóticos en las aurículas (300–600 impulsos/min) con pérdida de la contracción auricular eficaz. Se produce estasis en la orejuela izquierda, epicentro de la trombogénesis y de los ictus embólicos.',
+  causes: ['Hipertensión arterial, cardiopatía isquémica, valvulopatía mitral', 'Insuficiencia cardíaca, hipertiroidismo', 'Alcohol ("holiday heart"), obesidad, apnea del sueño, edad avanzada', 'Postoperatorio de cirugía cardíaca y sepsis'],
+  treat: [
+    '<b>Control de frecuencia</b>: betabloqueante (metoprolol, esmolol), diltiazem o digoxina si hay insuficiencia cardíaca.',
+    '<b>Control de ritmo</b>: cardioversión eléctrica o farmacológica (amiodarona, flecainida, propafenona).',
+    '<b>Anticoagulación</b> según CHA₂DS₂-VASc. Si han pasado &gt; 48 h sin anticoagulación, no cardiovertir sin 3 semanas de anticoagulación o ecocardiograma transesofágico negativo.',
+    'Inestable: <b>cardioversión sincronizada urgente</b> (120–200 J bifásicos).'
+  ],
+  nursing: [
+    'Medir el <b>déficit de pulso</b>: auscultación del foco apical + palpación radial durante 60 s completos.',
+    'Evaluación neurovascular seriada (escala de Cincinnati o NIHSS): debilidad, desviación facial, alteración del lenguaje.',
+    'Vigilar sangrado en pacientes anticoagulados: hematuria, melenas, gingivorragias, puntos de punción y hematomas.',
+    'Educar sobre adherencia al anticoagulante, prevención de caídas y control de la TA; evitar AINE y automedicación.',
+    'Registrar FC y ritmo antes y después de cada fármaco; vigilar la bradicardia por betabloqueantes.'
+  ],
+  alarm: [
+    'Hipotensión, angina, disnea o edema agudo → cardioversión sincronizada urgente.',
+    'Déficit neurológico súbito (ictus embólico).',
+    'Sangrado activo o caída de hemoglobina en paciente anticoagulado.',
+    'FC &gt; 150 lpm sostenida.'
+  ],
+  pearl: 'En la FA el número del monitor puede engañar: la frecuencia real de eyecciones útiles se valora con el déficit de pulso, no solo con la FC de pantalla.',
+  gen: T => {
+    const B = []; const rnd = mulberry32(7); let t = 0;
+    while (t < T + 1) {
+      B.push(beat(t, { p: false, qrsOn: 0.03, tAmp: 0.15, tDelay: 0.20, tSigma: 0.05, qrsAmp: 0.9 + rnd() * 0.2 }));
+      t += 0.34 + rnd() * 0.41;
+    }
+    return { beats: B, base: afBase };
+  }
+},
+/* ---------------------------------------------------------------- 6 */
+{
+  id: 'flutter', group: 'sv', name: 'Flutter auricular',
+  rate: 75, rateNote: 'Auricular ≈ 300 lpm · conducción 4:1', sev: 'urg',
+  m: { rhythm: ['Regular (bloqueo fijo)', 'warn'], p: 'Ondas F "dientes de sierra"', pr: 'No valorable', qrs: '0,08 s' },
+  tagline: 'Macrorreentrada auricular a ≈ 300 lpm con ondas F en dientes de sierra; el nodo AV filtra la respuesta ventricular (2:1, 3:1, 4:1).',
+  key: [
+    '<b>Ondas F</b> continuas, regulares y bifásicas ("dientes de sierra"), <b>sin línea isoeléctrica</b>, típicas en II, III y aVF.',
+    '<b>Frecuencia auricular 250–350 lpm</b> (≈ 300 lpm).',
+    'Respuesta ventricular = 300 ÷ razón de bloqueo: <b>2:1 → 150</b>, <b>3:1 → 100</b>, <b>4:1 → 75 lpm</b>.',
+    '<b>QRS estrecho</b>; el ritmo es regular si el bloqueo es fijo e irregular si es variable.',
+    'Ausencia de ondas P verdaderas.'
+  ],
+  patho: 'Circuito de macrorreentrada estable en la aurícula derecha que gira alrededor del anillo tricuspídeo y atraviesa obligatoriamente el istmo cavotricuspídeo. El nodo AV no puede conducir a 300 lpm y filtra con bloqueo fijo o variable.',
+  causes: ['EPOC e hipertensión pulmonar', 'Valvulopatía mitral o tricúspide', 'Cardiopatía congénita del adulto', 'Postcirugía cardíaca con cicatrices auriculares', 'Hipertiroidismo, alcohol, descompensación de insuficiencia cardíaca'],
+  treat: [
+    'Inestable: <b>cardioversión sincronizada</b> con energías bajas (50–100 J bifásicos).',
+    'Estable: betabloqueante o calcioantagonista para controlar la respuesta ventricular; amiodarona.',
+    'Curativo: <b>ablación por radiofrecuencia del istmo cavotricuspídeo</b> (éxito &gt; 90 %).',
+    'Profilaxis tromboembólica con los mismos criterios que la fibrilación auricular.'
+  ],
+  nursing: [
+    'Preparación para cardioversión: ayuno, retirada de prótesis y objetos metálicos, vía permeable, O₂ y material de sedación (propofol, etomidato).',
+    'Verificar que <b>SYNC</b> está activado en la pantalla y que cada onda R lleva marca de sincronización.',
+    'Después de la descarga: vigilar la vía aérea y la ventilación espontánea, revisar la piel bajo los parches y realizar ECG de 12 derivaciones.',
+    'Vigilar la respuesta ventricular y la PA durante el ajuste de betabloqueantes o calcioantagonistas.',
+    'Educar sobre anticoagulación y signos de recidiva (palpitaciones, disnea).'
+  ],
+  alarm: [
+    'Respuesta 1:1 o 2:1 con FC 150–300 lpm y compromiso hemodinámico.',
+    'Angina, insuficiencia cardíaca aguda o hipotensión → cardioversión sincronizada.',
+    'Cambio de bloqueo fijo a variable con FC media elevada.'
+  ],
+  pearl: 'Una "taquicardia sinusal" persistente a 150 lpm exactos es sospecha de flutter con bloqueo 2:1: busca las ondas F en II, III y aVF.',
+  gen: T => {
+    const B = [];
+    for (let t = 0; t < T + 1; t += 0.8) B.push(beat(t, { p: false, qrsOn: 0.04, tAmp: 0.10, tDelay: 0.22, tSigma: 0.05 }));
+    return { beats: B, base: flutterBase };
+  }
+},
+/* ---------------------------------------------------------------- 7 */
+{
+  id: 'cvp', group: 'v', name: 'Extrasístoles ventriculares (CVP)',
+  rate: 75, rateNote: 'Ritmo de base 75 lpm con CVP', sev: 'vig',
+  m: { rhythm: ['Irregular por extrasístoles', 'warn'], p: 'Sinusal en latidos de base', pr: 'Normal en el latido sinusal', qrs: 'Ancho en el CVP (&gt; 0,12 s)' },
+  tagline: 'Latido ectópico ventricular prematuro, ancho y sin P, seguido de una pausa compensatoria completa: el hallazgo que obliga a mirar el contexto.',
+  key: [
+    '<b>QRS ancho</b> (&gt; 0,12 s), deformado y mellado, que irrumpe antes del latido esperado.',
+    '<b>Sin onda P</b> precedente y <b>onda T discordante</b> respecto al QRS.',
+    '<b>Pausa compensatoria completa</b>: el intervalo entre el latido normal previo y el posterior equivale a 2 × el R-R sinusal.',
+    'Monomórficas (un foco) o polimórficas (varios); patrones bigeminado, trigeminado o en parejas.',
+    'Riesgo especial: <b>fenómeno R sobre T</b> (extrasístole sobre la fase vulnerable de la onda T).'
+  ],
+  patho: 'El foco ectópico ventricular despolariza el miocardio fuera de las vías rápidas: la conducción es célula a célula, lenta y asincrónica, de ahí el QRS ancho y la discordancia de la T. La pausa compensatoria refleja que el nodo SA no se reinicia.',
+  causes: ['Isquemia miocárdica aguda e insuficiencia cardíaca avanzada', 'Hipopotasemia, hipomagnesemia, hipocalcemia', 'Digitálicos, simpaticomiméticos, cafeína, tabaco, alcohol', 'Miocardiopatías y sobrecarga adrenérgica (estrés, dolor, cirugía)'],
+  treat: [
+    'Asintomáticos sin cardiopatía: suprimir estimulantes y corregir electrolitos.',
+    'Cardiopatía estructural: betabloqueante oral.',
+    'Isquemia aguda o rachas repetitivas: amiodarona IV.',
+    'R sobre T, TV no sostenida o CVP muy frecuentes: valorar antiarrítmico y monitorización intensiva.'
+  ],
+  nursing: [
+    'Vigilar los <b>signos de malignidad</b>: aumento brusco de la frecuencia de CVP, polimorfismo, rachas de ≥ 3 (TV no sostenida) y R sobre T.',
+    'Control analítico de <b>K (4–5 mmol/L)</b> y <b>Mg (&gt; 2 mg/dL)</b>; administrar reposiciones prescritas con control ECG.',
+    'Correlacionar las extrasístoles con los síntomas: palpitaciones ("vuelco cardíaco"), mareo, disnea o dolor torácico.',
+    'Carro de parada revisado y accesible: un paciente con CVP malignas puede descompensar a TV o FV.',
+    'Revisar la medicación (digoxina, fármacos que prolongan el QT) y los niveles plasmáticos si procede.'
+  ],
+  alarm: [
+    'Rachas de 3 o más CVP (TV no sostenida) o CVP polimórficas.',
+    'Fenómeno R sobre T o QT largo asociado.',
+    'CVP en el contexto de isquemia aguda, síncope o insuficiencia cardíaca descompensada.',
+    'Aumento progresivo de la densidad de extrasístoles.'
+  ],
+  pearl: 'Un CVP aislado rara vez es grave; su valor está en lo que anuncia: isquemia, hipopotasemia, toxicidad digitálica o taquicardia ventricular.',
+  gen: T => {
+    const B = []; const per = 2.4;
+    for (let o = 0; o < T + 1; o += per) {
+      B.push(beat(o));
+      B.push(beat(o + 0.8));
+      B.push(beat(o + 1.4, { p: false, qrsOn: 0.03, qrs: 'wide', qrsAmp: 1.15, tAmp: -0.45, tDelay: 0.28, tSigma: 0.07 }));
+    }
+    return { beats: B };
+  }
+},
+/* ---------------------------------------------------------------- 8 */
+{
+  id: 'tvm', group: 'v', name: 'Taquicardia ventricular monomórfica',
+  rate: 170, rateNote: 'FC típica 120–200 lpm', sev: 'emg',
+  m: { rhythm: ['Regular', 'danger'], p: 'Ausente / disociación AV', pr: 'No valorable', qrs: 'Ancho ≥ 0,12 s' },
+  tagline: 'Taquicardia regular de QRS ancho a 120–200 lpm: con pulso e inestable → cardioversión sincronizada; sin pulso → desfibrilación.',
+  key: [
+    '<b>FC 120–200 lpm</b> (≈ 170 lpm) con ritmo <b>regular</b>.',
+    '<b>QRS ancho ≥ 0,12 s</b> y <b>monomórfico</b> (misma morfología en todas las derivaciones).',
+    '<b>P ausentes</b> o disociación auriculoventricular (P "marchando" independientes).',
+    'Onda T discordante; el eje y la morfología no cambian latido a latido.',
+    'Con pulso es TV; sin pulso equivale a FV y exige desfibrilación.'
+  ],
+  patho: 'Circuito de reentrada o automatismo anormal en el miocardio ventricular. La despolarización no utiliza el sistema His-Purkinje, se propaga lentamente por el músculo y genera un QRS ancho, con contracción descoordinada y gasto cardíaco reducido.',
+  causes: ['Cardiopatía isquémica aguda y cicatriz post-IAM', 'Miocardiopatía dilatada o hipertrófica', 'Hipopotasemia, hipomagnesemia, hipoxia, acidosis', 'Fármacos proarrítmicos, QT largo', 'Idiopática (ramas, tracto de salida del ventrículo derecho)'],
+  treat: [
+    'Sin pulso: <b>RCP + desfibrilación</b> (algoritmo de FV/TV sin pulso).',
+    'Con pulso e inestable: <b>cardioversión sincronizada</b> (100–200 J bifásicos).',
+    'Con pulso y estable: amiodarona 150 mg IV en 10 min o procainamida; corregir la causa.',
+    '<b>Nunca verapamilo ni diltiazem</b> en una TV (riesgo de colapso).'
+  ],
+  nursing: [
+    'Comprobar siempre el <b>pulso central</b>: la conducta cambia radicalmente entre TV con pulso y TV sin pulso.',
+    'Monitorización continua, vía venosa permeable, O₂ y desfibrilador con parches colocados y cargado.',
+    'Registrar el ritmo antes y después de cada fármaco: la amiodarona puede producir hipotensión y bradicardia.',
+    'Evitar fármacos que prolonguen el QT y corregir los electrolitos.',
+    'Mantener el entorno preparado para una desfibrilación y acompañar al paciente y a la familia.'
+  ],
+  alarm: [
+    'Pérdida de pulso o de conciencia → desfibrilación inmediata.',
+    'Hipotensión, angina, disnea u oliguria → cardioversión sincronizada.',
+    'FC creciente o cambio a TV polimórfica / FV.',
+    'Administración inadvertida de verapamilo o diltiazem.'
+  ],
+  pearl: 'Ante toda taquicardia de QRS ancho, trata primero como TV: el verapamilo en una TV puede provocar un colapso hemodinámico fatal.',
+  gen: T => {
+    const B = [];
+    for (let t = 0; t < T + 1; t += rr(170)) B.push(beat(t, { p: false, qrsOn: 0.04, qrs: 'wide', qrsAmp: 1.0, tAmp: -0.42, tDelay: 0.30, tSigma: 0.075 }));
+    return { beats: B };
+  }
+},
+/* ---------------------------------------------------------------- 9 */
+{
+  id: 'torsades', group: 'v', name: 'Torsades de pointes',
+  rate: 220, rateNote: 'TV polimórfica · 200–250 lpm', sev: 'emg',
+  m: { rhythm: ['Irregular', 'danger'], p: 'Ausente', pr: 'No valorable', qrs: 'Ancho, morfología cambiante' },
+  tagline: 'TV polimórfica con QRS que "giran" alrededor de la línea de base en el contexto de un QT largo: magnesio y corrección de electrolitos.',
+  key: [
+    '<b>QRS ancho</b> con amplitud y polaridad que cambian de forma progresiva (torsión alrededor de la línea de base).',
+    '<b>FC 200–250 lpm</b> con ritmo <b>irregular</b>.',
+    '<b>QT/QTc prolongado</b> en el ritmo de base (± onda U prominente).',
+    'Sin ondas P identificables.',
+    'Puede autolimitarse o degenerar en fibrilación ventricular.'
+  ],
+  patho: 'Dispersión de la repolarización por QT largo (adquirido o congénito): la fase vulnerable se amplía y una extrasístole desencadena circuitos múltiples cambiantes. Frecuente con hipomagnesemia, hipopotasemia, bradicardia y fármacos que prolongan el QT.',
+  causes: ['Hipomagnesemia, hipopotasemia, hipocalcemia', 'Fármacos: macrólidos, quinolonas, antipsicóticos, antiarrítmicos IA/III, ondansetrón', 'Bradicardia, bloqueo AV completo, QT largo congénito', 'Isquemia, miocarditis, alcohol'],
+  treat: [
+    '<b>Sulfato de magnesio 2 g IV</b> (aunque la magnesemia sea normal), repetible.',
+    'Corregir K y Mg; retirar el fármaco causal; monitorizar el QT.',
+    '<b>Sobreestimulación o marcapasos</b> e isoprenalina para aumentar la FC y acortar el QT.',
+    'Si hay inestabilidad o degenera a FV: descarga <b>no sincronizada</b>.'
+  ],
+  nursing: [
+    'Revisar la medicación sospechosa y el <b>QT del ECG previo</b>; comunicar cualquier QTc &gt; 0,50 s.',
+    'Control estricto de K y Mg, con reposición y monitorización continua.',
+    'Mantener desfibrilador y sulfato de magnesio preparados: el torsades puede degenerar en FV.',
+    'No administrar fármacos que prolonguen el QT sin indicación expresa.',
+    'Vigilar palpitaciones, mareo y síncope; registrar el ritmo durante los episodios.'
+  ],
+  alarm: [
+    'Síncope o convulsión por bajo gasto.',
+    'Degeneración a fibrilación ventricular.',
+    'QTc &gt; 0,50 s en el ritmo de base.',
+    'Hipopotasemia o hipomagnesemia no corregidas.'
+  ],
+  pearl: 'Si el QT es largo, el magnesio es tratamiento de primera línea incluso con magnesemia normal: actúa estabilizando la membrana.',
+  gen: T => {
+    const B = []; const rnd = mulberry32(21); let t = 0;
+    while (t < T + 1) {
+      const m = Math.cos(2 * Math.PI * t / 3.6);
+      B.push(beat(t, { p: false, qrsOn: 0.03, qrs: 'wide', qrsAmp: 1.25 * m, tAmp: -0.34 * m, tDelay: 0.26, tSigma: 0.07 }));
+      t += rr(220) * (0.85 + rnd() * 0.3);
+    }
+    return { beats: B };
+  }
+},
+/* --------------------------------------------------------------- 10 */
+{
+  id: 'fv', group: 'v', name: 'Fibrilación ventricular',
+  rate: 0, rateNote: 'Sin gasto cardíaco · paro', sev: 'emg',
+  m: { rhythm: ['Caótico', 'danger'], p: 'Ausente', pr: 'No valorable', qrs: 'No identificable' },
+  tagline: 'Caos eléctrico sin complejos identificables ni gasto cardíaco: paro cardíaco; desfibrilación inmediata y RCP de alta calidad.',
+  key: [
+    'Trazado <b>caótico</b>, sin QRS, P ni T identificables; ondas de amplitud y frecuencia variables.',
+    '<b>FV gruesa</b> (mayor amplitud, más probabilidad de éxito) o <b>fina</b> (peor pronóstico).',
+    '<b>Sin gasto cardíaco</b>: inconsciencia, apnea y ausencia de pulso central.',
+    'Es un ritmo <b>desfibrilable</b>: la desfibrilación precoz es el determinante principal de la supervivencia.'
+  ],
+  patho: 'Múltiples frentes de despolarización ventricular desorganizados, sin contracción coordinada: el corazón deja de bombear. Es la arritmia del paro cardíaco con ritmo desfibrilable.',
+  causes: ['Isquemia miocárdica aguda (la más frecuente)', 'TV degenerada, R sobre T, QT largo', 'Hipo/hiperpotasemia, hipomagnesemia', 'Hipotermia, electrocución, ahogamiento', 'Fármacos proarrítmicos, miocardiopatías'],
+  treat: [
+    '<b>RCP de alta calidad + desfibrilación inmediata</b> (150–200 J bifásicos o 360 J monofásicos).',
+    '<b>Adrenalina 1 mg IV/IO</b> cada 3–5 min tras la segunda descarga.',
+    '<b>Amiodarona 300 mg IV</b> tras la tercera descarga; lidocaína como alternativa.',
+    'Buscar y corregir causas reversibles (5H / 5T); valorar la capnografía.'
+  ],
+  nursing: [
+    'Iniciar compresiones sin interrupciones: <b>100–120/min</b>, 5–6 cm de profundidad y retroceso completo.',
+    'Cargar el desfibrilador mientras otro profesional comprime; pausa peridescarga &lt; 10 s.',
+    '<b>Seguridad</b>: retirar el O₂ del tórax, nadie en contacto con la cama, parches anteroposterior o anterolateral.',
+    'Registrar tiempos, descargas, fármacos y el ritmo tras cada descarga; avisar al equipo de parada.',
+    'Cuidados posparo: control de temperatura, hemodinámica, glucemia, ECG de 12 derivaciones y traslado a UCI.'
+  ],
+  alarm: [
+    'Es un paro cardíaco: no hay signos de alarma previos, hay que actuar de inmediato.',
+    'En monitorización, toda FV exige comprobar pulso y desfibrilar sin demora.',
+    'Evitar interrupciones prolongadas de las compresiones.'
+  ],
+  pearl: 'La FV no produce pulso: si el monitor la muestra y el paciente está consciente, sospecha artefacto o cables desconectados antes de descargar.',
+  gen: T => ({ beats: [], base: fvBase })
+},
+/* --------------------------------------------------------------- 11 */
+{
+  id: 'asistolia', group: 'v', name: 'Asistolia',
+  rate: 0, rateNote: 'Sin actividad eléctrica · paro', sev: 'emg',
+  m: { rhythm: ['Ausente (línea plana)', 'danger'], p: 'Ausente', pr: 'No valorable', qrs: 'Ausente' },
+  tagline: 'Línea isoeléctrica sin actividad eléctrica ventricular: paro cardíaco no desfibrilable; RCP, adrenalina y búsqueda de causas.',
+  key: [
+    'Trazado <b>prácticamente plano</b>, sin ondas P, QRS ni T.',
+    'Descartar antes <b>artefacto</b>: comprobar cables, electrodos, ganancia y una segunda derivación.',
+    'Ausencia de pulso central, inconsciencia y apnea.',
+    'Mal pronóstico: la supervivencia depende de la RCP precoz y de revertir la causa.'
+  ],
+  patho: 'Ausencia de actividad eléctrica ventricular, por agotamiento del automatismo (hipoxia prolongada, acidosis) o por una causa reversible no corregida.',
+  causes: ['<b>5H</b>: hipoxia, hipovolemia, hipo/hiperpotasemia, hipotermia, hidrogeniones (acidosis)', '<b>5T</b>: trombosis coronaria, trombosis pulmonar, neumotórax a tensión, taponamiento cardíaco, tóxicos', 'Asistolia tras FV prolongada'],
+  treat: [
+    '<b>RCP inmediata</b> y de alta calidad; <b>NO desfibrilar</b>.',
+    '<b>Adrenalina 1 mg IV/IO</b> cada 3–5 min (lo antes posible).',
+    'Buscar y tratar las <b>causas reversibles</b> (5H/5T); valorar vía intraósea.'
+  ],
+  nursing: [
+    'Confirmar la asistolia en <b>dos derivaciones</b> y revisar la conexión antes de asumir el diagnóstico.',
+    'Comprimir sin interrupciones, con cambio de reanimador cada 2 min y capnografía como monitor de calidad.',
+    'Preparar y administrar adrenalina con registro horario; lavar la vía tras cada dosis.',
+    'Registrar el algoritmo completo (hora de inicio, ciclos, fármacos, ritmos) para el informe de parada.',
+    'Acompañar a la familia según el protocolo del centro.'
+  ],
+  alarm: [
+    'Es un ritmo de paro: no hay margen de espera.',
+    'Cuidado con confundir la asistolia con una desconexión de cables o una ganancia baja.',
+    'Las pausas prolongadas o una RCP de baja calidad empeoran el pronóstico.'
+  ],
+  pearl: 'Antes de declarar una asistolia, sube la ganancia y cambia de derivación: una falsa línea plana por electrodo suelto es un error clásico.',
+  gen: T => ({ beats: [], base: t => 0.014 * Math.sin(2 * Math.PI * 0.17 * t) + 0.008 * Math.sin(2 * Math.PI * 0.53 * t + 1) })
+},
+/* --------------------------------------------------------------- 12 */
+{
+  id: 'aesp', group: 'v', name: 'Actividad eléctrica sin pulso (AESP)',
+  rate: 40, rateNote: 'Ritmo organizado sin pulso', sev: 'emg',
+  m: { rhythm: ['Organizado', 'warn'], p: 'Puede estar presente', pr: 'Variable', qrs: 'Estrecho o ancho' },
+  tagline: 'Actividad eléctrica organizada sin pulso palpable: el monitor no basta, hay que palpar siempre el pulso central.',
+  key: [
+    '<b>Ritmo eléctrico organizado</b> (sinusal, bradicárdico o de QRS ancho) <b>sin pulso central palpable</b>.',
+    'Sin gasto cardíaco: inconsciencia, apnea y ausencia de pulso.',
+    'Con frecuencia bradicárdico y con QRS ancho por hipoxia o hiperpotasemia.',
+    'El diagnóstico es <b>clínico</b>: trazado presente + ausencia de pulso.'
+  ],
+  patho: 'Existe despolarización eléctrica pero no contracción mecánica eficaz: fallo del acoplamiento excitación-contracción por hipoxia, acidosis, alteraciones iónicas o fallo mecánico (taponamiento, neumotórax a tensión, TEP).',
+  causes: ['<b>5H / 5T</b>: hipovolemia, hipoxia, taponamiento, neumotórax a tensión, TEP, tóxicos, acidosis', 'IAM extenso y shock cardiogénico', 'Sobredosis de fármacos, hipotermia'],
+  treat: [
+    '<b>RCP de alta calidad + adrenalina 1 mg IV/IO</b> cada 3–5 min.',
+    '<b>NO desfibrilar</b>; prioridad absoluta a las causas reversibles.',
+    'Ecografía rápida, capnografía y gasometría para orientar la causa.',
+    'Fluidoterapia, descompresión torácica o pericardiocentesis según la causa.'
+  ],
+  nursing: [
+    '<b>Palpar siempre el pulso central</b>: la AESP no se diagnostica por el monitor.',
+    'Administrar volumen y fármacos según la sospecha etiológica y registrar la respuesta.',
+    '<b>Capnografía</b>: un ascenso brusco del EtCO₂ indica recuperación de la circulación espontánea.',
+    'Asegurar la vía aérea y la ventilación con O₂ al 100 %.',
+    'Preparar material de drenaje torácico o pericardiocentesis si se sospecha causa mecánica.'
+  ],
+  alarm: [
+    'Ritmo organizado en pantalla con paciente inconsciente y sin pulso → paro.',
+    'Hipotensión extrema con pulso apenas palpable: AESP inminente.',
+    'Empeoramiento del EtCO₂ durante la RCP.'
+  ],
+  pearl: 'Un monitor "tranquilizador" con un paciente que no responde es una AESP: la comprobación del pulso es el paso que nunca debe omitirse.',
+  gen: T => {
+    const B = [];
+    for (let t = 0; t < T + 1; t += rr(40)) B.push(beat(t, { pAmp: 0.11, qrsOn: 0.20, qrsAmp: 0.8, tAmp: 0.18, tDelay: 0.24 }));
+    return { beats: B };
+  }
+},
+/* --------------------------------------------------------------- 13 */
+{
+  id: 'bav1', group: 'av', name: 'Bloqueo AV de primer grado',
+  rate: 60, rateNote: 'Todas las P conducen', sev: 'vig',
+  m: { rhythm: ['Regular', 'ok'], p: 'Sinusal, 1:1', pr: '0,30 s (prolongado y fijo)', qrs: '0,08 s' },
+  tagline: 'PR &gt; 0,20 s constante con todas las P conducidas: hallazgo frecuente, benigno y casi siempre asintomático.',
+  key: [
+    '<b>PR &gt; 0,20 s</b> (más de 5 cuadros pequeños), <b>constante</b> en todos los latidos.',
+    '<b>Todas las ondas P se siguen de un QRS</b> (relación 1:1).',
+    'Ritmo regular; FC normal o algo bradicárdica.',
+    'QRS estrecho, salvo bloqueo de rama asociado.',
+    '<b>Sin latidos caídos.</b>'
+  ],
+  patho: 'Retraso de la conducción a nivel del nodo AV o del haz de His: el estímulo llega a los ventrículos, pero con más latencia. Por sí mismo rara vez produce síntomas.',
+  causes: ['Fibrosis del sistema de conducción por la edad', 'Fármacos frenadores: betabloqueantes, digoxina, diltiazem, verapamilo', 'Miocarditis, IAM inferior, miocardiopatías', 'Hiperpotasemia, hipotiroidismo, enfermedad de Lyme'],
+  treat: [
+    'No requiere tratamiento específico; revisar los fármacos que enlentecen la conducción.',
+    'Vigilar la progresión a bloqueos de mayor grado.',
+    'Marcapasos solo si aparecen síntomas o progresión documentada.'
+  ],
+  nursing: [
+    'Registrar el PR en cada ECG y compararlo con trazados previos del paciente.',
+    'Revisar la medicación frenadora y comentar con el médico si el PR aumenta.',
+    'Monitorizar si hay bradicardia asociada o síntomas (mareo, fatigabilidad).',
+    'Educar al paciente: el hallazgo aislado no limita su vida diaria, pero debe controlarse.'
+  ],
+  alarm: [
+    'Progresión del PR o aparición de latidos caídos (Mobitz).',
+    'Síncope, mareo o fatigabilidad.',
+    'Bradicardia sintomática.'
+  ],
+  pearl: 'Un PR largo aislado no asusta; lo que importa es la tendencia: compara siempre con trazados anteriores.',
+  gen: T => {
+    const B = [];
+    for (let t = 0; t < T + 1; t += rr(60)) B.push(beat(t, { qrsOn: 0.30, tAmp: 0.27, tDelay: 0.24 }));
+    return { beats: B };
+  }
+},
+/* --------------------------------------------------------------- 14 */
+{
+  id: 'wenck', group: 'av', name: 'Bloqueo AV de 2.º grado Mobitz I',
+  rate: 56, rateNote: 'Fenómeno de Wenckebach', sev: 'vig',
+  m: { rhythm: ['Irregular por grupos', 'warn'], p: 'Sinusal con P bloqueadas', pr: 'Progresivo (0,18 → 0,36 s)', qrs: '0,08 s' },
+  tagline: 'Alargamiento progresivo del PR hasta que una P no conduce: el grupo de latidos "que se agota" del fenómeno de Wenckebach.',
+  key: [
+    '<b>PR que se alarga latido a latido</b> hasta que una onda P no se sigue de QRS.',
+    'Tras la P bloqueada, el ciclo se reinicia con el PR más corto.',
+    'El intervalo <b>R-R se acorta</b> progresivamente antes de la pausa.',
+    'Habitualmente el bloqueo es <b>nodal</b> y el QRS es estrecho.',
+    'Pausa menor que el doble del R-R precedente.'
+  ],
+  patho: 'Bloqueo progresivo en el nodo AV (nivel nodal, QRS estrecho): cada impulso llega con mayor refractariedad relativa hasta que uno no se conduce. Suele ser benigno y reversible.',
+  causes: ['Aumento del tono vagal (deportistas, sueño, náuseas, dolor)', 'IAM inferior (arteria coronaria derecha)', 'Betabloqueantes, digoxina, calcioantagonistas', 'Miocarditis; rara vez idiopático'],
+  treat: [
+    'Observación y retirada del fármaco causal si es posible.',
+    '<b>Atropina</b> si hay bradicardia sintomática.',
+    'Marcapasos solo si es sintomático o progresa; rara vez es necesario un marcapasos definitivo.'
+  ],
+  nursing: [
+    'Monitorización continua para detectar progresión a un bloqueo de mayor grado.',
+    'Vigilar síntomas de bajo gasto durante las pausas: mareo, sudoración, hipotensión.',
+    'Ajustar las alarmas de pausa y de FC; no silenciarlas.',
+    'Revisar fármacos frenadores y el contexto (dolor, vómitos, estimulación vagal).'
+  ],
+  alarm: [
+    'Síncope o presíncope durante las pausas.',
+    'Progresión a Mobitz II o a bloqueo completo (QRS ancho).',
+    'Bradicardia &lt; 40 lpm o pausas prolongadas.'
+  ],
+  pearl: 'En el Wenckebach las pausas son previsibles porque el PR se alarga progresivamente: si ves la P bloqueada, ya tienes el diagnóstico.',
+  gen: T => {
+    const B = []; const per = 3.2;
+    for (let o = 0; o < T + 1; o += per) {
+      B.push(beat(o, { qrsOn: 0.18, pAmp: 0.17 }));
+      B.push(beat(o + 0.8, { qrsOn: 0.28, pAmp: 0.17 }));
+      B.push(beat(o + 1.6, { qrsOn: 0.36, pAmp: 0.17 }));
+      B.push(beat(o + 2.4, { qrs: 'none', pAmp: 0.17 }));
+    }
+    return { beats: B };
+  }
+},
+/* --------------------------------------------------------------- 15 */
+{
+  id: 'mobitz2', group: 'av', name: 'Bloqueo AV de 2.º grado Mobitz II',
+  rate: 53, rateNote: 'Conducción 3:2 · bloqueo infranodal', sev: 'urg',
+  m: { rhythm: ['Irregular con pausas bruscas', 'danger'], p: 'Sinusal con P bloqueadas', pr: 'Constante (0,20 s)', qrs: '0,08 s (a menudo ancho)' },
+  tagline: 'PR constante con P bloqueadas súbitas: bloqueo infranodal, imprevisible y con alto riesgo de bloqueo AV completo.',
+  key: [
+    '<b>PR constante</b> en todos los latidos conducidos.',
+    'Ondas P que de forma <b>súbita no se siguen de QRS</b> (bloqueo 2:1, 3:1...).',
+    'La pausa equivale al doble (o múltiplo) del intervalo P-P.',
+    'El bloqueo suele ser <b>infranodal</b> (haz de His-Purkinje), a menudo con QRS ancho.',
+    '<b>Alto riesgo</b> de progresión a bloqueo AV completo y asistolia.'
+  ],
+  patho: 'Fallo intermitente de la conducción por debajo del nodo AV (haz de His o ramas). Los latidos que pasan lo hacen con normalidad, pero el siguiente puede no conducirse sin aviso: el deterioro es imprevisible.',
+  causes: ['Enfermedad degenerativa del sistema de conducción (Lev, Lenègre)', 'IAM anterior extenso (septal)', 'Postcirugía cardíaca, miocarditis', 'Infiltración (amiloidosis, sarcoidosis); fármacos agravantes'],
+  treat: [
+    '<b>Marcapasos definitivo</b>: indicación habitual, incluso asintomático.',
+    'Marcapasos transcutáneo como puente si hay inestabilidad.',
+    'Atropina poco eficaz (bloqueo infranodal); valorar isoprenalina o adrenalina.',
+    'Retirar los fármacos que agravan la conducción.'
+  ],
+  nursing: [
+    'Monitorización continua imprescindible: el primer signo puede ser un síncope.',
+    'Marcapasos transcutáneo preparado y parches colocados en pacientes de riesgo.',
+    'Registrar cada episodio de P bloqueada y su duración.',
+    'Valorar signos de bajo gasto y educar al paciente sobre el síncope de esfuerzo.',
+    'Coordinar el traslado a una unidad con capacidad de marcapasos.'
+  ],
+  alarm: [
+    'Síncope (crisis de Stokes-Adams).',
+    'Aumento de la razón de bloqueo o pausas &gt; 3 s.',
+    'Progresión a bloqueo AV completo con QRS ancho.'
+  ],
+  pearl: 'Un Mobitz II asintomático sigue necesitando marcapasos: el riesgo no depende de los síntomas, sino de la imprevisibilidad de la pausa.',
+  gen: T => {
+    const B = []; const per = 2.25;
+    for (let o = 0; o < T + 1; o += per) {
+      B.push(beat(o, { qrsOn: 0.20 }));
+      B.push(beat(o + 0.75, { qrsOn: 0.20 }));
+      B.push(beat(o + 1.5, { qrs: 'none' }));
+    }
+    return { beats: B };
+  }
+},
+/* --------------------------------------------------------------- 16 */
+{
+  id: 'bav3', group: 'av', name: 'Bloqueo AV de tercer grado (completo)',
+  rate: 38, rateNote: 'Auricular ≈ 90 · ventricular ≈ 38 lpm', sev: 'emg',
+  m: { rhythm: ['Disociación AV', 'danger'], p: 'Sinusal, disociada del QRS', pr: 'Variable (sin relación)', qrs: 'Ancho, de escape' },
+  tagline: 'Disociación completa entre aurículas y ventrículos: el QRS de escape marca el ritmo y el gasto cardíaco cae.',
+  key: [
+    'Ondas P y complejos QRS <b>completamente independientes</b> (disociación AV).',
+    '<b>Frecuencia auricular mayor que la ventricular</b>: las P "marchan" a través del trazado.',
+    'PR variable, <b>sin relación fija</b>; algunas P quedan ocultas en el QRS o en la T.',
+    'QRS de <b>escape</b>, habitualmente ancho y a 30–45 lpm.',
+    'Ritmo ventricular regular (o ligeramente irregular si hay varios focos de escape).'
+  ],
+  patho: 'Interrupción total de la conducción entre aurículas y ventrículos. El nodo SA sigue descargando sin contracción auricular coordinada y los ventrículos adoptan un marcapasos de escape lento, con bajo gasto, síncope y riesgo de asistolia.',
+  causes: ['Bloqueo AV completo congénito o adquirido', 'IAM inferior o anterior extenso', 'Fibrosis del sistema de conducción por la edad', 'Postcirugía cardíaca, miocarditis, endocarditis con absceso', 'Fármacos frenadores, hiperpotasemia'],
+  treat: [
+    '<b>Marcapasos transcutáneo inmediato</b> si hay inestabilidad, y marcapasos definitivo.',
+    'Atropina poco eficaz (bloqueo infranodal); isoprenalina o adrenalina como puente.',
+    'Corregir la causa y suspender los fármacos frenadores.',
+    'Reposo absoluto y monitorización continua hasta el implante.'
+  ],
+  nursing: [
+    'Monitorización continua con alarmas de FC baja y de pausa; accesos venosos permeables.',
+    'Preparar y aplicar el <b>marcapasos transcutáneo</b> en modo a demanda, subiendo mA hasta captura; verificar espícula-QRS y pulso.',
+    'Vigilar signos de bajo gasto: hipotensión, oliguria, confusión, dolor torácico, disnea.',
+    'Evitar esfuerzos, incorporaciones bruscas y maniobras vagales; acompañar en el baño.',
+    'Educar sobre el marcapasos definitivo: cuidados del punto de implante, control y signos de disfunción.'
+  ],
+  alarm: [
+    'Síncope o crisis de Stokes-Adams.',
+    'Hipotensión, insuficiencia cardíaca aguda, oliguria, deterioro de conciencia.',
+    'QRS de escape muy lento (&lt; 30 lpm) o pausas prolongadas.',
+    'Asistolia.'
+  ],
+  pearl: 'En el bloqueo AV completo busca las P que "pasean" entre los QRS: encontrarlas disociadas es lo que confirma el diagnóstico.',
+  gen: T => {
+    const B = [];
+    for (let t = 0; t < T + 1; t += 0.6667) B.push(beat(t, { qrs: 'none' }));
+    for (let t = 0.4; t < T + 1; t += rr(38)) B.push(beat(t, { p: false, qrsOn: 0.03, qrs: 'wide', qrsAmp: 0.95, tAmp: -0.38, tDelay: 0.30, tSigma: 0.075 }));
+    return { beats: B };
+  }
+}
+];
+
+/* =====================================================================
+   3. ESTADO Y UTILIDADES DE INTERFAZ
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+let hasUserSelected = false;
+const state = {
+  index: 0,
+  wave: null,
+  time: 0,
+  playing: true,
+  speed: 1,
+  sound: false,
+  alarmAcc: 0
+};
+
+const GROUP_COLOR = { sinusal: '#5cf2a8', sv: '#4bb8ff', v: '#ff8b95', av: '#ffd27a' };
+const PREV_W = 64, PREV_H = 26;
+
+function previewSVG(r) {
+  let w;
+  try { w = buildWave(r, 6); } catch (e) { return ''; }
+  const s = w.samples;
+  const win = (r.rate > 0 && r.rate <= 50) ? 5.4 : (r.rate >= 150 ? 2.6 : 3.6);
+  const nSamp = Math.min(s.length, Math.round(win * FS));
+  const step = Math.max(1, Math.floor(nSamp / 120));
+  const y0 = PREV_H / 2, k = (PREV_H * 0.40) / 1.35;
+  let d = '', first = true;
+  for (let i = 0; i < nSamp; i += step) {
+    const x = (i / nSamp) * PREV_W;
+    const y = y0 - s[i] * k;
+    d += (first ? 'M' : 'L') + x.toFixed(1) + ' ' + y.toFixed(1);
+    first = false;
+  }
+  return '<svg class="mini" viewBox="0 0 ' + PREV_W + ' ' + PREV_H + '" preserveAspectRatio="none" aria-hidden="true">' +
+    '<path d="' + d + '" fill="none" stroke="' + GROUP_COLOR[r.group] + '" stroke-width="1.6" ' +
+    'stroke-linecap="round" stroke-linejoin="round" opacity=".95"/></svg>';
+}
+
+/* ---------- selector ---------- */
+function buildSelector() {
+  const wrap = $('groups');
+  let html = '';
+  GROUPS.forEach(gr => {
+    html += '<div class="sel-group"><div class="g-title">' + gr.label + '</div>';
+    RHYTHMS.forEach((r, i) => {
+      if (r.group !== gr.id) return;
+      const bpm = r.rate > 0 ? r.rate : 0;
+      const bpmTxt = r.rate > 0 ? bpm + '' : '0';
+      html += '<button class="r-btn" data-idx="' + i + '" title="' + r.name + '">' +
+        previewSVG(r) +
+        '<span class="rname">' + r.name + '</span>' +
+        '<span class="rbpm">' + bpmTxt + '</span></button>';
+    });
+    html += '</div>';
+  });
+  wrap.innerHTML = html;
+  wrap.querySelectorAll('.r-btn').forEach(btn => {
+    btn.addEventListener('click', () => selectRhythm(+btn.dataset.idx));
+  });
+}
+
+/* =====================================================================
+   4. SELECCIÓN DE RITMO Y FICHA CLÍNICA
+   ===================================================================== */
+function selectRhythm(idx) {
+  const r = RHYTHMS[idx];
+  if (!r) return;
+  state.index = idx;
+  state.time = 0;
+  state.alarmAcc = 0;
+  state.wave = buildWave(r, DUR);
+
+  document.querySelectorAll('.r-btn').forEach(b => {
+    b.classList.toggle('active', +b.dataset.idx === idx);
+  });
+
+  /* --- monitor superior --- */
+  const pulseless = (r.id === 'fv' || r.id === 'asistolia' || r.id === 'aesp');
+  const fc = $('fc');
+  fc.textContent = r.rate;
+  fc.style.color = r.rate === 0 ? '#ff5f6d' : '#5cf2a8';
+  fc.style.textShadow = r.rate === 0 ? '0 0 26px rgba(255,95,109,.55)' : '0 0 26px rgba(92,242,168,.45)';
+  const heart = document.querySelector('.fc-heart');
+  heart.style.fill = pulseless ? '#ff5f6d' : '#5cf2a8';
+  heart.style.animationDuration = pulseless ? '1.6s' : '1s';
+
+  const sr = $('s-rhythm');
+  sr.textContent = r.m.rhythm[0];
+  sr.className = 'v ' + r.m.rhythm[1];
+  $('s-p').textContent = r.m.p;
+  $('s-pr').textContent = r.m.pr;
+  $('s-qrs').innerHTML = r.m.qrs;
+
+  const sev = SEV[r.sev];
+  const badge = $('sev');
+  badge.className = 'monitor-badge ' + sev.cls;
+  badge.textContent = sev.label;
+
+  $('pill-rate').innerHTML = 'FC <b>' + r.rate + ' lpm</b>';
+
+  /* --- cabecera de ficha --- */
+  $('f-name').textContent = r.name;
+  $('f-tagline').innerHTML = r.tagline;
+  $('f-rate').textContent = r.rate + ' lpm';
+  $('f-ratenote').innerHTML = r.rateNote;
+
+  /* --- tarjetas --- */
+  const ul = arr => '<ul>' + arr.map(x => '<li>' + x + '</li>').join('') + '</ul>';
+  const kv = (k, v) => '<div class="kv"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>';
+
+  $('cards').innerHTML =
+    '<div class="card wide">' +
+      '<h3><span class="dot"></span>Características electrocardiográficas</h3>' +
+      ul(r.key) +
+      '<div class="callout"><b>Perla clínica:</b> ' + r.pearl + '</div>' +
+    '</div>' +
+
+    '<div class="card">' +
+      '<h3><span class="dot"></span>Fisiopatología</h3>' +
+      '<p>' + r.patho + '</p>' +
+      '<h3 style="margin-top:14px"><span class="dot"></span>Parámetros clave</h3>' +
+      kv('Frecuencia', r.rate + ' lpm · ' + r.rateNote) +
+      kv('Regularidad', r.m.rhythm[0]) +
+      kv('Onda P', r.m.p) +
+      kv('Intervalo PR', r.m.pr) +
+      kv('Complejo QRS', r.m.qrs) +
+    '</div>' +
+
+    '<div class="card">' +
+      '<h3><span class="dot"></span>Causas frecuentes</h3>' +
+      '<div class="chips">' + r.causes.map(c => '<span class="chip">' + c + '</span>').join('') + '</div>' +
+      '<h3 style="margin-top:16px"><span class="dot"></span>Signos de alarma / inestabilidad</h3>' +
+      ul(r.alarm) +
+    '</div>' +
+
+    '<div class="card wide">' +
+      '<h3><span class="dot"></span>Manejo terapéutico</h3>' +
+      ul(r.treat) +
+    '</div>' +
+
+    '<div class="card wide nursing">' +
+      '<h3><span class="dot"></span>Cuidados de enfermería · valoración e intervenciones</h3>' +
+      ul(r.nursing) +
+    '</div>';
+
+  updateFootNote(r);
+
+  if (hasUserSelected && window.innerWidth < 1120) {
+    const m = document.querySelector('.monitor');
+    if (m) m.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  hasUserSelected = true;
+}
+
+function updateFootNote(r) {
+  const n = $('foot-note');
+  if (r.rate === 0 || r.id === 'aesp') {
+    n.innerHTML = '<b style="color:#ff8b95">Ritmo de paro cardíaco:</b> sin gasto circulatorio · RCP inmediata';
+  } else {
+    n.textContent = 'Trazado sintético didáctico generado en tiempo real · no usar con fines diagnósticos';
+  }
+}
+
+/* =====================================================================
+   5. MONITOR: LIENZO, REJILLA Y TRAZADO
+   ===================================================================== */
+const cvs = $('ecg');
+const g = cvs.getContext('2d');
+let CW = 0, CH = 0, DPR = 1, gridCache = null;
+let windowS = 6;              // segundos visibles
+let pxPerSec = 180, pxPerMM = 7.2, baseY = 200, mVpx = 72;
+
+function setupCanvas() {
+  const rect = cvs.getBoundingClientRect();
+  if (rect.width < 10 || rect.height < 10) return;
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  CW = rect.width;
+  CH = rect.height;
+  cvs.width = Math.round(CW * DPR);
+  cvs.height = Math.round(CH * DPR);
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  windowS = CW >= 840 ? 6 : (CW >= 640 ? 5 : (CW >= 470 ? 4.4 : 3.6));
+  pxPerMM = CW / (windowS * 25);
+  pxPerSec = pxPerMM * 25;
+  mVpx = pxPerMM * 10;
+  baseY = CH * 0.57;
+
+  buildGrid();
+}
+
+function buildGrid() {
+  const c = document.createElement('canvas');
+  c.width = Math.round(CW * DPR);
+  c.height = Math.round(CH * DPR);
+  const ctx = c.getContext('2d');
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  const bg = ctx.createLinearGradient(0, 0, 0, CH);
+  bg.addColorStop(0, '#04141d');
+  bg.addColorStop(1, '#020b11');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, CW, CH);
+
+  /* rejilla fina (1 mm) */
+  ctx.lineWidth = 1;
+  if (pxPerMM > 4.2) {
+    ctx.strokeStyle = 'rgba(80,170,190,.085)';
+    ctx.beginPath();
+    for (let x = 0; x <= CW; x += pxPerMM) {
+      const xx = Math.round(x) + .5;
+      ctx.moveTo(xx, 0); ctx.lineTo(xx, CH);
+    }
+    for (let y = baseY % pxPerMM; y <= CH; y += pxPerMM) {
+      const yy = Math.round(y) + .5;
+      ctx.moveTo(0, yy); ctx.lineTo(CW, yy);
+    }
+    ctx.stroke();
+  }
+  /* rejilla gruesa (5 mm) */
+  ctx.strokeStyle = 'rgba(95,205,220,.20)';
+  ctx.beginPath();
+  for (let x = 0; x <= CW; x += pxPerMM * 5) {
+    const xx = Math.round(x) + .5;
+    ctx.moveTo(xx, 0); ctx.lineTo(xx, CH);
+  }
+  for (let y = baseY; y <= CH; y += pxPerMM * 5) {
+    const yy = Math.round(y) + .5;
+    ctx.moveTo(0, yy); ctx.lineTo(CW, yy);
+  }
+  for (let y = baseY - pxPerMM * 5; y >= 0; y -= pxPerMM * 5) {
+    const yy = Math.round(y) + .5;
+    ctx.moveTo(0, yy); ctx.lineTo(CW, yy);
+  }
+  ctx.stroke();
+
+  gridCache = c;
+}
+
+function sampleAt(t) {
+  const s = state.wave.samples;
+  const N = s.length;
+  let idx = t * FS;
+  idx = ((idx % N) + N) % N;
+  const i0 = Math.floor(idx);
+  const i1 = (i0 + 1) % N;
+  const f = idx - i0;
+  return s[i0] * (1 - f) + s[i1] * f;
+}
+
+function drawMonitor(now) {
+  if (!gridCache) return;
+  g.clearRect(0, 0, CW, CH);
+  g.drawImage(gridCache, 0, 0, CW, CH);
+
+  const tv = state.time;
+  const r = RHYTHMS[state.index];
+
+  /* --- trazado --- */
+  g.beginPath();
+  for (let x = 0; x <= CW; x += 1) {
+    const ts = tv - (CW - x) / pxPerSec;
+    const y = baseY - sampleAt(ts) * mVpx;
+    if (x === 0) g.moveTo(x, y); else g.lineTo(x, y);
+  }
+  g.lineJoin = 'round';
+  g.lineCap = 'round';
+  g.strokeStyle = 'rgba(92,242,168,.16)';
+  g.lineWidth = 7;
+  g.stroke();
+  g.strokeStyle = 'rgba(92,242,168,.30)';
+  g.lineWidth = 3.4;
+  g.stroke();
+  g.strokeStyle = '#5cf2a8';
+  g.lineWidth = 1.9;
+  g.stroke();
+
+  /* --- punto de barrido --- */
+  const yNow = baseY - sampleAt(tv) * mVpx;
+  g.save();
+  g.shadowColor = 'rgba(92,242,168,.95)';
+  g.shadowBlur = 16;
+  g.fillStyle = '#d9ffe9';
+  g.beginPath();
+  g.arc(CW - 1.5, yNow, 3.4, 0, Math.PI * 2);
+  g.fill();
+  g.restore();
+
+  /* --- derivación y calibración --- */
+  g.font = '600 12px ui-monospace, Menlo, Consolas, monospace';
+  g.fillStyle = 'rgba(214,245,232,.72)';
+  g.fillText('II', 12, 22);
+  g.font = '11px ui-monospace, Menlo, Consolas, monospace';
+  g.fillStyle = 'rgba(142,169,187,.75)';
+  g.fillText('25 mm/s · 10 mm/mV', 12, CH - 12);
+
+  /* --- marca de calibración 1 mV --- */
+  const calX = CW - 74, calY = CH - 22;
+  g.strokeStyle = 'rgba(92,242,168,.45)';
+  g.lineWidth = 1.4;
+  g.beginPath();
+  g.moveTo(calX, calY);
+  g.lineTo(calX, calY - mVpx);
+  g.lineTo(calX + pxPerMM * 5, calY - mVpx);
+  g.lineTo(calX + pxPerMM * 5, calY);
+  g.stroke();
+
+  /* --- aviso de paro --- */
+  if (r.rate === 0) {
+    const a = 0.45 + 0.55 * Math.abs(Math.sin((now || 0) / 420));
+    g.save();
+    g.font = '700 13px "Segoe UI", system-ui, sans-serif';
+    g.textAlign = 'right';
+    g.fillStyle = 'rgba(255,95,109,' + a.toFixed(2) + ')';
+    g.fillText(r.id === 'fv' ? 'FIBRILACIÓN VENTRICULAR · PARO' : 'ASISTOLIA · PARO', CW - 12, 24);
+    g.restore();
+  } else if (r.id === 'torsades' || r.id === 'tvm') {
+    g.save();
+    g.font = '700 11px "Segoe UI", system-ui, sans-serif';
+    g.textAlign = 'right';
+    g.fillStyle = 'rgba(255,139,149,.8)';
+    g.fillText(r.id === 'tvm' ? 'QRS ANCHO · ¿PULSO?' : 'QT LARGO · TV POLIMÓRFICA', CW - 12, 24);
+    g.restore();
+  }
+}
+
+/* =====================================================================
+   6. BUCLE DE ANIMACIÓN Y SONIDO
+   ===================================================================== */
+let lastTs = 0, actx = null;
+
+function beep(freq, dur, vol, type) {
+  if (!actx) return;
+  const t0 = actx.currentTime;
+  const o = actx.createOscillator();
+  const gn = actx.createGain();
+  o.type = type || 'sine';
+  o.frequency.value = freq;
+  gn.gain.setValueAtTime(0.0001, t0);
+  gn.gain.exponentialRampToValueAtTime(vol || 0.06, t0 + 0.006);
+  gn.gain.exponentialRampToValueAtTime(0.0001, t0 + (dur || 0.07));
+  o.connect(gn);
+  gn.connect(actx.destination);
+  o.start(t0);
+  o.stop(t0 + (dur || 0.07) + 0.03);
+}
+
+function beepForQRS(prev, now) {
+  if (!state.sound || !state.wave) return;
+  const q = state.wave.qrsTimes;
+  let n = 0;
+  for (let i = 0; i < q.length && n < 5; i++) {
+    let hit = false;
+    if (now >= prev) hit = (q[i] > prev && q[i] <= now);
+    else hit = (q[i] > prev) || (q[i] <= now);
+    if (hit) { beep(880, 0.06, 0.05); n++; }
+  }
+}
+
+function tick(ts) {
+  if (!lastTs) lastTs = ts;
+  let dt = (ts - lastTs) / 1000;
+  lastTs = ts;
+  if (dt > 0.15) dt = 0.15;
+
+  if (state.playing && state.wave) {
+    const prev = state.time;
+    state.time = (state.time + dt * state.speed) % DUR;
+    beepForQRS(prev, state.time);
+
+    const r = RHYTHMS[state.index];
+    if (state.sound && r.rate === 0) {
+      state.alarmAcc += dt;
+      if (state.alarmAcc > 1.6) {
+        state.alarmAcc = 0;
+        beep(660, 0.16, 0.05, 'square');
+        setTimeout(() => beep(520, 0.2, 0.05, 'square'), 190);
+      }
+    }
+  }
+  drawMonitor(ts);
+  requestAnimationFrame(tick);
+}
+
+/* =====================================================================
+   7. CONTROLES
+   ===================================================================== */
+function togglePlay() {
+  state.playing = !state.playing;
+  $('btn-play').classList.toggle('on', state.playing);
+  $('play-label').textContent = state.playing ? 'Pausar' : 'Reanudar';
+  const icon = $('btn-play').querySelector('svg');
+  icon.innerHTML = state.playing
+    ? '<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>'
+    : '<path d="M7 4.5l12 7.5-12 7.5z"/>';
+}
+
+function cycleSpeed() {
+  const opts = [0.5, 1, 1.5, 2];
+  const i = opts.indexOf(state.speed);
+  state.speed = opts[(i + 1) % opts.length];
+  $('btn-speed').textContent = 'Velocidad ' + String(state.speed).replace('.', ',') + '×';
+  $('btn-speed').classList.toggle('on', state.speed !== 1);
+}
+
+function toggleSound() {
+  state.sound = !state.sound;
+  $('btn-sound').classList.toggle('on', state.sound);
+  if (state.sound) {
+    if (!actx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) actx = new AC();
+    }
+    if (actx && actx.state === 'suspended') actx.resume();
+    beep(880, 0.08, 0.05);
+  }
+}
+
+$('btn-play').addEventListener('click', togglePlay);
+$('btn-speed').addEventListener('click', cycleSpeed);
+$('btn-sound').addEventListener('click', toggleSound);
+$('btn-reset').addEventListener('click', () => { state.time = 0; });
+
+/* pestañas */
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => {
+      t.classList.remove('active');
+      t.setAttribute('aria-selected', 'false');
+    });
+    tab.classList.add('active');
+    tab.setAttribute('aria-selected', 'true');
+    document.querySelectorAll('.tabpanel').forEach(p => p.classList.remove('active'));
+    const panel = $('tab-' + tab.dataset.tab);
+    if (panel) panel.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (tab.dataset.tab === 'monitor') setTimeout(setupCanvas, 40);
+  });
+});
+
+/* teclado: flechas para cambiar de ritmo */
+window.addEventListener('keydown', e => {
+  if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+  if (e.key === 'ArrowRight') { selectRhythm((state.index + 1) % RHYTHMS.length); }
+  if (e.key === 'ArrowLeft') { selectRhythm((state.index - 1 + RHYTHMS.length) % RHYTHMS.length); }
+  if (e.key === ' ') { e.preventDefault(); togglePlay(); }
+});
+
+/* =====================================================================
+   8. AUTOEVALUACIÓN
+   ===================================================================== */
+const QUIZ = [
+  {
+    q: 'Un paciente presenta PR de 0,28 s constante y todas las ondas P seguidas de QRS. ¿De qué se trata y qué actitud es correcta?',
+    opts: [
+      'Bloqueo AV de primer grado: no requiere tratamiento específico, pero hay que vigilar su progresión',
+      'Bloqueo AV de segundo grado Mobitz II: marcapasos urgente',
+      'Bloqueo AV completo: atropina inmediata',
+      'Ritmo sinusal normal: el PR puede llegar a 0,30 s'
+    ],
+    a: 0,
+    exp: 'El PR &gt; 0,20 s constante con relación P-QRS 1:1 define un bloqueo de primer grado. Es habitualmente benigno: se revisan los fármacos frenadores y se vigila la progresión a bloqueos de mayor grado.'
+  },
+  {
+    q: 'Fibrilación auricular de 4 días de evolución, paciente estable, sin anticoagulación. Antes de una cardioversión programada debe garantizarse:',
+    opts: [
+      'Nada especial: la cardioversión es segura en cualquier momento',
+      '3 semanas de anticoagulación previa o ecocardiograma transesofágico que descarte trombo en la orejuela izquierda',
+      'Administrar únicamente un betabloqueante y cardiovertir después',
+      'Suspender la anticoagulación 24 h antes del choque'
+    ],
+    a: 1,
+    exp: 'Por encima de 48 h de evolución sin anticoagulación eficaz existe un riesgo embólico elevado: se requiere anticoagulación durante 3 semanas o un ETE negativo antes de restaurar el ritmo sinusal, salvo inestabilidad hemodinámica.'
+  },
+  {
+    q: 'Antes de una cardioversión sincronizada, la comprobación enfermera crítica en el monitor-desfibrilador es:',
+    opts: [
+      'Que el volumen del altavoz esté alto',
+      'Que la función SYNC esté activada y cada onda R tenga su marca de sincronización',
+      'Que la ganancia esté al máximo',
+      'Que el modo marcapasos esté activado'
+    ],
+    a: 1,
+    exp: 'Un choque liberado sobre la onda T (período refractario relativo) puede desencadenar una fibrilación ventricular. Verificar SYNC y la marca en cada R evita esta complicación iatrogénica.'
+  },
+  {
+    q: 'En una bradicardia sinusal sintomática se prescribe atropina 0,3 mg IV. ¿Qué debes hacer?',
+    opts: [
+      'Administrarla tal cual: es la dosis correcta',
+      'Consultar: dosis inferiores a 0,5 mg pueden producir bradicardia paradójica; la pauta habitual es 0,5–1 mg en bolo rápido',
+      'Administrarla muy lentamente para evitar taquicardia',
+      'Sustituirla por adenosina'
+    ],
+    a: 1,
+    exp: 'Dosis subóptimas (&lt; 0,5 mg) o administradas lentamente pueden excitar los núcleos vagales centrales y provocar bradicardia paradójica. La atropina se administra en bolo IV rápido: 1 mg (AHA) o 0,5 mg (ERC), repetible hasta 3 mg.'
+  },
+  {
+    q: 'Taquicardia regular a 150 lpm, QRS estrecho, sin ondas P visibles. ¿Cuál es la sospecha más razonable?',
+    opts: [
+      'Taquicardia ventricular monomórfica',
+      'Flutter auricular con bloqueo 2:1 (o TSVP)',
+      'Fibrilación auricular',
+      'Ritmo sinusal normal'
+    ],
+    a: 1,
+    exp: 'Una frecuencia de 150 lpm exactos con QRS estrecho y regular es típica del flutter auricular con conducción 2:1 (aurículas a 300 lpm). Busca las ondas F en dientes de sierra en II, III y aVF.'
+  },
+  {
+    q: 'El monitor muestra una fibrilación ventricular, pero el paciente está consciente, hablando y con pulso. ¿Qué haces?',
+    opts: [
+      'Desfibrilar de inmediato: la FV es siempre una emergencia',
+      'Comprobar pulso, conciencia y conexión de electrodos antes de descargar: sospecha artefacto',
+      'Administrar amiodarona 300 mg IV',
+      'Iniciar compresiones torácicas'
+    ],
+    a: 1,
+    exp: 'La FV verdadera no produce pulso. Ante un trazado de FV en un paciente consciente hay que descartar artefacto, cables sueltos o mala señal antes de aplicar una descarga.'
+  },
+  {
+    q: 'Paciente inconsciente, sin pulso, con actividad eléctrica organizada en el monitor. La conducta correcta es:',
+    opts: [
+      'Desfibrilar a 200 J',
+      'RCP de alta calidad + adrenalina 1 mg cada 3–5 min y búsqueda de causas reversibles (5H/5T)',
+      'Atropina 1 mg y observación',
+      'Cardioversión sincronizada'
+    ],
+    a: 1,
+    exp: 'Se trata de una actividad eléctrica sin pulso (AESP): es un ritmo no desfibrilable. La prioridad es la RCP de calidad, la adrenalina y corregir las causas reversibles, con capnografía como monitor de calidad.'
+  },
+  {
+    q: 'En un paciente con fibrilación auricular, ¿cómo se mide correctamente el déficit de pulso?',
+    opts: [
+      'Con el valor de FC que muestra el monitor',
+      'Auscultando el foco apical y palpando el pulso radial simultáneamente durante 60 segundos',
+      'Con la saturación de oxígeno',
+      'Palpando el pulso radial durante 15 s y multiplicando por 4'
+    ],
+    a: 1,
+    exp: 'El déficit de pulso es la diferencia entre los latidos auscultados en el foco apical y los pulsos periféricos palpables; refleja las eyecciones mecánicamente ineficaces. Se mide de forma simultánea durante 60 s.'
+  },
+  {
+    q: 'TV polimórfica con QRS que giran sobre la línea de base en un paciente con QT largo e hipomagnesemia. El tratamiento inicial es:',
+    opts: [
+      'Amiodarona 300 mg IV',
+      'Sulfato de magnesio 2 g IV y corrección de K y Mg',
+      'Verapamilo IV',
+      'Adenosina 6 mg IV'
+    ],
+    a: 1,
+    exp: 'Se trata de una torsades de pointes. El sulfato de magnesio (2 g IV) es de primera línea incluso con magnesemia normal; además hay que corregir el potasio, retirar el fármaco que prolonga el QT y valorar sobreestimulación.'
+  },
+  {
+    q: 'Con el marcapasos transcutáneo en modo a demanda, ¿qué indica captura eléctrica correcta?',
+    opts: [
+      'Solo la aparición de la espícula en la pantalla',
+      'Espícula seguida de un complejo QRS ancho y una onda T de polaridad opuesta',
+      'Que el paciente refiera hormigueo en el tórax',
+      'Que la FC del monitor supere 100 lpm'
+    ],
+    a: 1,
+    exp: 'La captura eléctrica se confirma cuando cada espícula va seguida de un QRS ancho con T discordante. Si solo aparece la espícula sin QRS, hay que aumentar progresivamente los miliamperios.'
+  },
+  {
+    q: 'Ante toda taquicardia de QRS ancho e inestabilidad, ¿qué actitud inicial es la correcta?',
+    opts: [
+      'Verapamilo IV para frenar la taquicardia',
+      'Cardioversión sincronizada (o desfibrilación si no hay pulso), tratándola como TV',
+      'Solo observación y control de la PA',
+      'Maniboras vagales y adenosina'
+    ],
+    a: 1,
+    exp: 'Toda taquicardia de QRS ancho se trata como TV hasta que se demuestre lo contrario. Con pulso e inestabilidad: cardioversión sincronizada. Sin pulso: desfibrilación. El verapamilo puede provocar un colapso en la TV.'
+  },
+  {
+    q: '¿Qué hallazgo confirma un bloqueo AV de tercer grado?',
+    opts: [
+      'PR progresivamente más largo hasta que una P no conduce',
+      'PR constante con P bloqueadas de forma súbita',
+      'Ondas P y QRS independientes, con frecuencia auricular mayor que la ventricular',
+      'PR de 0,22 s en todos los latidos'
+    ],
+    a: 2,
+    exp: 'En el bloqueo completo existe disociación auriculoventricular: las P y los QRS no guardan relación y la frecuencia auricular es mayor que la del escape ventricular. Las respuestas 1 y 2 corresponden a Mobitz I y Mobitz II.'
+  }
+];
+
+let quizAnswered = [];
+
+function renderQuiz() {
+  const box = $('quiz');
+  box.innerHTML = QUIZ.map((q, i) =>
+    '<div class="q-card" data-q="' + i + '">' +
+      '<div class="q-num">Pregunta ' + (i + 1) + ' de ' + QUIZ.length + '</div>' +
+      '<div class="q-text">' + q.q + '</div>' +
+      '<div class="q-opts">' +
+        q.opts.map((o, j) => '<button class="q-opt" data-i="' + i + '" data-j="' + j + '">' + o + '</button>').join('') +
+      '</div>' +
+      '<div class="q-exp" id="exp-' + i + '">' + q.exp + '</div>' +
+    '</div>'
+  ).join('');
+
+  box.querySelectorAll('.q-opt').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = +btn.dataset.i, j = +btn.dataset.j;
+      if (quizAnswered[i]) return;
+      quizAnswered[i] = j + 1;
+      const card = box.querySelector('.q-card[data-q="' + i + '"]');
+      card.querySelectorAll('.q-opt').forEach((b, k) => {
+        b.disabled = true;
+        if (k === QUIZ[i].a) b.classList.add('correct');
+        if (k === j && j !== QUIZ[i].a) b.classList.add('wrong');
+      });
+      $('exp-' + i).classList.add('show');
+      updateScore();
+    });
+  });
+  updateScore();
+}
+
+function updateScore() {
+  const answered = quizAnswered.filter(Boolean).length;
+  const hits = quizAnswered.filter((v, i) => v && v - 1 === QUIZ[i].a).length;
+  $('score').textContent = 'Aciertos: ' + hits + ' / ' + QUIZ.length +
+    (answered ? '  ·  respondidas ' + answered : '');
+}
+
+$('btn-quiz-reset').addEventListener('click', () => {
+  quizAnswered = [];
+  renderQuiz();
+});
+
+/* =====================================================================
+   9. ARRANQUE
+   ===================================================================== */
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(setupCanvas, 120);
+});
+
+buildSelector();
+renderQuiz();
+selectRhythm(0);
+
+requestAnimationFrame(() => {
+  setupCanvas();
+  requestAnimationFrame(tick);
+});
+
+</script>
+</body>
+</html>
